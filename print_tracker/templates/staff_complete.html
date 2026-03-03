@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+    <h2>Print ID {{ job.label_code }}</h2>
+    <ul class="summary-list">
+        <li><strong>Status:</strong> {{ job.status_label }}</li>
+        <li><strong>File Name:</strong> {{ job.file_name }}</li>
+        <li><strong>User:</strong> {{ job.user_name }} ({{ job.user_email }})</li>
+        <li><strong>Project Type:</strong> {{ job.category_label }}</li>
+        {% if job.course_number %}
+            <li><strong>Course #:</strong> {{ job.course_number }}</li>
+        {% endif %}
+        {% if job.instructor %}
+            <li><strong>Instructor:</strong> {{ job.instructor }}</li>
+        {% endif %}
+        {% if job.department %}
+            <li><strong>Department:</strong> {{ job.department }}</li>
+        {% endif %}
+        {% if job.pi_name %}
+            <li><strong>PI:</strong> {{ job.pi_name }}</li>
+        {% endif %}
+        <li><strong>Started:</strong> {{ job.created_at.strftime('%Y-%m-%d %H:%M') }}</li>
+    </ul>
+
+    {% if job.notes %}
+        <p><strong>Notes:</strong> {{ job.notes }}</p>
+    {% endif %}
+
+    {% if job.is_completed %}
+        <div class="status-card">
+            <p><strong>Completed by:</strong> {{ job.completed_by }}</p>
+            <p><strong>Completed at:</strong> {{ job.completed_at.strftime('%Y-%m-%d %H:%M') if job.completed_at else '' }}</p>
+            <p><strong>Email status:</strong> {{ job.email_status }}</p>
+            {% if job.email_error %}
+                <p><strong>Email details:</strong> {{ job.email_error }}</p>
+            {% endif %}
+            {% if job.completion_notes %}
+                <p><strong>{% if job.status == 'failed' %}Failure description{% else %}Completion notes{% endif %}:</strong> {{ job.completion_notes }}</p>
+            {% endif %}
+        </div>
+    {% else %}
+        <form method="post" class="stacked-form" id="completionForm">
+            <fieldset class="status-options">
+                <legend>Completion status</legend>
+                <label class="option-pill">
+                    <input type="radio" name="completion_status" value="finished" checked>
+                    Finished
+                </label>
+                <label class="option-pill">
+                    <input type="radio" name="completion_status" value="failed">
+                    Failed
+                </label>
+            </fieldset>
+
+            <label>
+                Completed by
+                <input name="completed_by" required>
+            </label>
+
+            <label for="completionNotes">
+                <span id="completionNotesLabel">Notes for user/staff (optional)</span>
+                <textarea id="completionNotes" name="completion_notes" rows="4"></textarea>
+            </label>
+
+            <button type="submit">Mark Complete and Notify User</button>
+        </form>
+        <script>
+            (() => {
+                const form = document.getElementById("completionForm");
+                const notes = document.getElementById("completionNotes");
+                const notesLabel = document.getElementById("completionNotesLabel");
+                if (!form || !notes || !notesLabel) {
+                    return;
+                }
+
+                const sync = () => {
+                    const selected = form.querySelector('input[name="completion_status"]:checked');
+                    const isFailed = selected && selected.value === "failed";
+                    notes.required = Boolean(isFailed);
+                    notesLabel.textContent = isFailed
+                        ? "Failure description (required)"
+                        : "Notes for user/staff (optional)";
+                };
+
+                for (const input of form.querySelectorAll('input[name="completion_status"]')) {
+                    input.addEventListener("change", sync);
+                }
+                sync();
+            })();
+        </script>
+    {% endif %}
+
+    <div class="inline-actions">
+        <form method="post" action="{{ url_for('staff.reprint', label_code=job.label_code) }}" class="inline-action">
+            <button type="submit" class="button-link">Reprint Label</button>
+        </form>
+        <a class="button-link" href="{{ url_for('staff.dashboard') }}">Back to Dashboard</a>
+    </div>
+</section>
+{% endblock %}

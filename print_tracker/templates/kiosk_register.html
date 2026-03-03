@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel kiosk-compact">
+    <h2>Print in Progress</h2>
+
+    <form method="post" class="kiosk-compact-form" id="kioskForm">
+        <div class="form-grid two-col compact-row">
+            <label>
+                First name
+                <input id="first_name" name="first_name" value="{{ form.first_name }}" required maxlength="60" autocomplete="given-name" enterkeyhint="next">
+            </label>
+            <label>
+                Last name
+                <input id="last_name" name="last_name" value="{{ form.last_name }}" required maxlength="60" autocomplete="family-name" enterkeyhint="next">
+            </label>
+        </div>
+
+        <div class="form-grid two-col compact-row">
+            <label>
+                Email
+                <div class="email-field">
+                    <input id="user_email_local" name="user_email_local" value="{{ form.user_email_local }}" required maxlength="120" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" enterkeyhint="next">
+                    <span>@{{ ncsu_domain }}</span>
+                </div>
+            </label>
+            <label>
+                File name
+                <input id="file_name" name="file_name" value="{{ form.file_name }}" required maxlength="140" placeholder="example-v2.stl" autocapitalize="none" spellcheck="false" enterkeyhint="next">
+            </label>
+        </div>
+
+        <fieldset class="type-grid compact-types">
+            <legend>Project type</legend>
+            {% for value, label in category_options %}
+                <label class="type-card {% if form.category == value %}active{% endif %}">
+                    <input type="radio" name="category" value="{{ value }}" {% if form.category == value %}checked{% endif %}>
+                    <span>{{ label }}</span>
+                </label>
+            {% endfor %}
+        </fieldset>
+
+        <div class="form-grid two-col extra-course-fields" id="academicFields">
+            <label>
+                Course #
+                <input id="course_number" name="course_number" value="{{ form.course_number }}" maxlength="64" placeholder="MAE 305" autocapitalize="characters" enterkeyhint="next">
+            </label>
+            <label>
+                Instructor
+                <input id="instructor" name="instructor" value="{{ form.instructor }}" maxlength="120" autocomplete="off" enterkeyhint="done">
+            </label>
+        </div>
+
+        <div class="form-grid two-col extra-course-fields" id="researchFields">
+            <label>
+                Department
+                <input id="department" name="department" value="{{ form.department }}" maxlength="120" placeholder="Mechanical and Aerospace Engineering" autocomplete="organization" enterkeyhint="next">
+            </label>
+            <label>
+                PI
+                <input id="pi_name" name="pi_name" value="{{ form.pi_name }}" maxlength="120" autocomplete="off" enterkeyhint="done">
+            </label>
+        </div>
+
+        <div class="form-actions compact-actions">
+            <button type="submit">Print Label</button>
+        </div>
+    </form>
+</section>
+
+<script>
+    (() => {
+        const form = document.getElementById("kioskForm");
+        if (!form) {
+            return;
+        }
+
+        const categoryInputs = form.querySelectorAll('input[name="category"]');
+        const typeCards = form.querySelectorAll(".type-card");
+        const courseNumber = document.getElementById("course_number");
+        const instructor = document.getElementById("instructor");
+        const academicFields = document.getElementById("academicFields");
+        const department = document.getElementById("department");
+        const piName = document.getElementById("pi_name");
+        const researchFields = document.getElementById("researchFields");
+        const academicCategory = "course_assignment";
+        const researchCategory = "university_research";
+
+        const sync = () => {
+            const selected = form.querySelector('input[name="category"]:checked');
+            const selectedValue = selected ? selected.value : "";
+            const showAcademicFields = selectedValue === academicCategory;
+            const showResearchFields = selectedValue === researchCategory;
+
+            academicFields.style.display = showAcademicFields ? "grid" : "none";
+            researchFields.style.display = showResearchFields ? "grid" : "none";
+            courseNumber.required = showAcademicFields;
+            instructor.required = showAcademicFields;
+            department.required = showResearchFields;
+            piName.required = showResearchFields;
+
+            if (!showAcademicFields) {
+                courseNumber.value = "";
+                instructor.value = "";
+            }
+            if (!showResearchFields) {
+                department.value = "";
+                piName.value = "";
+            }
+
+            for (const card of typeCards) {
+                const input = card.querySelector('input[name="category"]');
+                card.classList.toggle("active", Boolean(input && input.checked));
+            }
+        };
+
+        for (const input of categoryInputs) {
+            input.addEventListener("change", sync);
+        }
+
+        form.addEventListener("focusin", (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLElement)) {
+                return;
+            }
+            if (!target.matches("input,select,textarea")) {
+                return;
+            }
+            const compactViewport = window.matchMedia("(max-height: 620px) and (max-width: 620px)").matches;
+            if (!compactViewport) {
+                return;
+            }
+            setTimeout(() => {
+                target.scrollIntoView({ behavior: "smooth", block: "center" });
+            }, 140);
+        });
+
+        sync();
+    })();
+</script>
+{% endblock %}

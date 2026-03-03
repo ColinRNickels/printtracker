@@ -1,0 +1,27 @@
+Hi {{ job.user_name }},
+
+Your print "{{ job.file_name }}" is complete and ready for pickup.
+
+Print ID: {{ job.label_code }}
+Project type: {{ job.category_label }}
+
+{% if job.course_number %}
+Course #: {{ job.course_number }}
+{% endif %}
+{% if job.instructor %}
+Instructor: {{ job.instructor }}
+{% endif %}
+{% if job.department %}
+Department: {{ job.department }}
+{% endif %}
+{% if job.pi_name %}
+PI: {{ job.pi_name }}
+{% endif %}
+
+{% if job.completion_notes %}
+Staff note:
+{{ job.completion_notes }}
+{% endif %}
+
+Thanks,
+Makerspace Team

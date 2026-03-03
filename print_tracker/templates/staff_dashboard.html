@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+    <h2>Staff Dashboard</h2>
+    <p>Scan a QR code to open a print record instantly, then mark it Finished or Failed.</p>
+    <form method="post" action="{{ url_for('staff.logout') }}" class="inline-action">
+        <button type="submit" class="button-link">Lock Staff Page</button>
+    </form>
+
+    <form method="post" action="{{ url_for('staff.scan') }}" class="scan-form">
+        <label>
+            Scan QR / enter Print ID
+            <input id="scanValue" name="scan_value" autofocus placeholder="Scan value or code">
+        </label>
+        <button type="submit">Open Job</button>
+    </form>
+</section>
+
+<section class="panel">
+    <h3>Operational Settings</h3>
+    <p>These settings apply immediately to this kiosk.</p>
+    <form method="post" action="{{ url_for('staff.update_settings') }}" class="kiosk-compact-form">
+        <label class="checkbox-row">
+            <input type="checkbox" name="completion_email_enabled" {% if operational_settings.completion_email_enabled %}checked{% endif %}>
+            Send completion emails
+        </label>
+        <label class="checkbox-row">
+            <input type="checkbox" name="save_label_files" {% if operational_settings.save_label_files %}checked{% endif %}>
+            Save label images for reprint
+        </label>
+        <label>
+            Keep label images for this many days
+            <input type="number" name="label_retention_days" min="1" max="30" value="{{ operational_settings.label_retention_days }}" required>
+        </label>
+        <label>
+            QR code mode
+            <select name="qr_payload_mode">
+                <option value="url" {% if operational_settings.qr_payload_mode == 'url' %}selected{% endif %}>Open staff page link (recommended for iPad/phone)</option>
+                <option value="id" {% if operational_settings.qr_payload_mode == 'id' %}selected{% endif %}>Print ID only (recommended for USB scanner)</option>
+            </select>
+        </label>
+        <p class="muted-line">Current email provider: <strong>{{ email_provider }}</strong></p>
+        <p class="muted-line">QR base URL: <strong>{{ kiosk_base_url or "not configured" }}</strong></p>
+        <p class="muted-line">Retention cleanup removes labels from yesterday or earlier when set to 1 day.</p>
+        <p class="muted-line">For iPad/phone scanning, set QR mode to link and ensure <code>KIOSK_BASE_URL</code> points to a Pi-reachable address.</p>
+        {% if qr_link_url_warning %}
+            <p class="muted-line warning-line"><strong>Warning:</strong> QR links currently use localhost/127.0.0.1 and may not open on iPad/phone.</p>
+        {% endif %}
+        <div class="form-actions">
+            <button type="submit">Save Settings</button>
+        </div>
+    </form>
+</section>
+
+<section class="panel">
+    <h3>In Progress</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Print ID</th>
+                <th>File</th>
+                <th>User</th>
+                <th>Started</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in in_progress %}
+                <tr>
+                    <td>{{ job.label_code }}</td>
+                    <td>{{ job.file_name }}</td>
+                    <td>{{ job.user_name }}</td>
+                    <td>{{ job.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <div class="inline-actions">
+                            <a href="{{ url_for('staff.complete_job', label_code=job.label_code) }}">Open</a>
+                            <form method="post" action="{{ url_for('staff.reprint', label_code=job.label_code) }}" class="inline-action">
+                                <button type="submit" class="button-link">Reprint</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="5">No active prints.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section class="panel">
+    <h3>Recently Completed</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Print ID</th>
+                <th>File</th>
+                <th>Status</th>
+                <th>Completed By</th>
+                <th>Completed At</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in recently_completed %}
+                <tr>
+                    <td>{{ job.label_code }}</td>
+                    <td>{{ job.file_name }}</td>
+                    <td>{{ job.status_label }}</td>
+                    <td>{{ job.completed_by }}</td>
+                    <td>{{ job.completed_at.strftime('%Y-%m-%d %H:%M') if job.completed_at else '' }}</td>
+                    <td>
+                        <form method="post" action="{{ url_for('staff.reprint', label_code=job.label_code) }}" class="inline-action">
+                            <button type="submit" class="button-link">Reprint</button>
+                        </form>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="6">No completed jobs yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<script>
+    (() => {
+        const scanInput = document.getElementById("scanValue");
+        if (!scanInput) {
+            return;
+        }
+        let submitTimer = null;
+        scanInput.addEventListener("input", () => {
+            const value = scanInput.value.trim();
+            if (!value) {
+                return;
+            }
+            const looksLikeLegacyId = /^PT-[A-F0-9]{8}$/i.test(value);
+            const looksLikeTimestampId = /^PT-\d{8}-\d{6}-\d{2}$/i.test(value);
+            const looksLikeUrl = value.includes("/staff/complete/PT-");
+            if ((looksLikeLegacyId || looksLikeTimestampId || looksLikeUrl) && !value.includes(" ")) {
+                if (submitTimer) {
+                    clearTimeout(submitTimer);
+                }
+                submitTimer = setTimeout(() => scanInput.form.requestSubmit(), 180);
+            }
+        });
+    })();
+</script>
+{% endblock %}
