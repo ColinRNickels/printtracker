@@ -22,6 +22,9 @@ GOOGLE_CLIENT_SECRETS=""
 GOOGLE_GMAIL_SENDER=""
 GOOGLE_SPREADSHEET_ID=""
 GOOGLE_WORKSHEET="PrintJobs"
+SETUP_TUNNEL=-1
+TUNNEL_NAME="print-tracker"
+TUNNEL_HOSTNAME=""
 
 usage() {
   cat <<'EOF'
@@ -49,6 +52,10 @@ Options:
   --google-spreadsheet-id ID
                            Spreadsheet ID for Google Sheets sync (optional).
   --google-worksheet NAME  Worksheet tab name (default: PrintJobs).
+  --setup-tunnel           Configure a Cloudflare Tunnel during deploy.
+  --no-tunnel              Skip Cloudflare Tunnel setup.
+  --tunnel-name NAME       Tunnel name (default: print-tracker).
+  --tunnel-hostname HOST   Public hostname for the tunnel (e.g. print.example.com).
   --logo-source PATH       Optional local PNG path for label logo.
   --skip-apt               Skip apt package install/update.
   --skip-cups              Skip CUPS service setup and printer checks.
@@ -208,7 +215,7 @@ run_google_oauth_setup() {
   fi
 
   log "Starting Google OAuth flow (browser or console prompt)..."
-  (cd "${app_dir}" && "${oauth_cmd[@]}") | tee "${output_file}"
+  (cd "${app_dir}" && "${oauth_cmd[@]}") > >(tee "${output_file}") 2>&1
 
   while IFS= read -r line; do
     [[ "${line}" == *=* ]] || continue
@@ -301,6 +308,22 @@ while [[ $# -gt 0 ]]; do
       GOOGLE_WORKSHEET="$2"
       shift 2
       ;;
+    --setup-tunnel)
+      SETUP_TUNNEL=1
+      shift
+      ;;
+    --no-tunnel)
+      SETUP_TUNNEL=0
+      shift
+      ;;
+    --tunnel-name)
+      TUNNEL_NAME="$2"
+      shift 2
+      ;;
+    --tunnel-hostname)
+      TUNNEL_HOSTNAME="$2"
+      shift 2
+      ;;
     --logo-source)
       LOGO_SOURCE="$2"
       shift 2
@@ -377,6 +400,15 @@ if [[ "${NON_INTERACTIVE}" -eq 0 ]]; then
   PRINT_MODE="$(prompt_default "Print mode (cups or mock)" "${PRINT_MODE}")"
   PRINTER_QUEUE="$(prompt_default "CUPS queue name" "${PRINTER_QUEUE}")"
   LABEL_MEDIA="$(prompt_default "CUPS media token" "${LABEL_MEDIA}")"
+  if [[ "${SETUP_TUNNEL}" -lt 0 ]]; then
+    if prompt_yes_no "Set up a Cloudflare Tunnel for public HTTPS access" "y"; then
+      SETUP_TUNNEL=1
+      TUNNEL_NAME="$(prompt_default "Tunnel name" "${TUNNEL_NAME}")"
+      TUNNEL_HOSTNAME="$(prompt_default "Public hostname (e.g. print.example.com, or leave blank for quick tunnel)" "${TUNNEL_HOSTNAME}")"
+    else
+      SETUP_TUNNEL=0
+    fi
+  fi
   if [[ "${SETUP_GOOGLE_OAUTH}" -lt 0 ]]; then
     if prompt_yes_no "Configure Google OAuth now (Gmail + Sheets)" "y"; then
       SETUP_GOOGLE_OAUTH=1
@@ -605,6 +637,70 @@ else
   warn "Skipping CUPS setup (--skip-cups)."
 fi
 
+TUNNEL_CONFIGURED=0
+if [[ "${SETUP_TUNNEL}" -lt 0 ]]; then
+  SETUP_TUNNEL=0
+fi
+if [[ "${SETUP_TUNNEL}" -eq 1 ]]; then
+  if ! command -v cloudflared >/dev/null 2>&1; then
+    warn "cloudflared not installed. Tunnel setup skipped."
+  else
+    log "Setting up Cloudflare Tunnel..."
+    # Authenticate if not already done
+    if [[ ! -f "${HOME}/.cloudflared/cert.pem" ]]; then
+      log "Authenticating with Cloudflare (a browser URL will be printed)..."
+      cloudflared tunnel login
+    else
+      log "Cloudflare already authenticated."
+    fi
+
+    # Create tunnel if it doesn't exist
+    if cloudflared tunnel list 2>/dev/null | grep -q "${TUNNEL_NAME}"; then
+      log "Tunnel '${TUNNEL_NAME}' already exists."
+    else
+      cloudflared tunnel create "${TUNNEL_NAME}"
+    fi
+
+    # Get tunnel ID
+    TUNNEL_ID="$(cloudflared tunnel list 2>/dev/null | awk -v name="${TUNNEL_NAME}" '$2==name {print $1; exit}')"
+    if [[ -z "${TUNNEL_ID}" ]]; then
+      warn "Could not determine tunnel ID. Skipping tunnel config."
+    else
+      TUNNEL_CREDS="${HOME}/.cloudflared/${TUNNEL_ID}.json"
+      TUNNEL_CONFIG="${HOME}/.cloudflared/config.yml"
+
+      log "Writing tunnel config to ${TUNNEL_CONFIG}..."
+      cat > "${TUNNEL_CONFIG}" <<TUNCONF
+tunnel: ${TUNNEL_ID}
+credentials-file: ${TUNNEL_CREDS}
+
+ingress:
+  - service: http://localhost:${PORT}
+TUNCONF
+
+      if [[ -n "${TUNNEL_HOSTNAME}" ]]; then
+        # Insert hostname rule before the catch-all
+        cat > "${TUNNEL_CONFIG}" <<TUNCONF
+tunnel: ${TUNNEL_ID}
+credentials-file: ${TUNNEL_CREDS}
+
+ingress:
+  - hostname: ${TUNNEL_HOSTNAME}
+    service: http://localhost:${PORT}
+  - service: http_status:404
+TUNCONF
+        log "Routing ${TUNNEL_HOSTNAME} -> localhost:${PORT}"
+        log "IMPORTANT: Add a CNAME record for ${TUNNEL_HOSTNAME} -> ${TUNNEL_ID}.cfargotunnel.com"
+      fi
+
+      # Install cloudflared as a systemd service
+      run_root cloudflared service install 2>/dev/null || true
+      run_root systemctl enable --now cloudflared 2>/dev/null || true
+      TUNNEL_CONFIGURED=1
+    fi
+  fi
+fi
+
 if [[ "${SKIP_SERVICE}" -eq 0 ]]; then
   log "Writing systemd service..."
   run_root tee "/etc/systemd/system/${SERVICE_NAME}.service" >/dev/null <<EOF
@@ -660,6 +756,26 @@ Important post-deploy checks:
 - Confirm KIOSK_BASE_URL in ${ENV_FILE} is reachable from staff devices for QR scans.
 
 EOF
+
+if [[ "${TUNNEL_CONFIGURED}" -eq 1 ]]; then
+  cat <<EOF
+Cloudflare Tunnel is configured:
+- Tunnel name: ${TUNNEL_NAME}
+- Config: ~/.cloudflared/config.yml
+- Service: sudo systemctl status cloudflared
+EOF
+  if [[ -n "${TUNNEL_HOSTNAME}" ]]; then
+    cat <<EOF
+- Public URL: https://${TUNNEL_HOSTNAME}
+- DNS: Add CNAME  ${TUNNEL_HOSTNAME} -> ${TUNNEL_ID}.cfargotunnel.com
+EOF
+  else
+    cat <<EOF
+- Quick tunnel (no custom domain). For a permanent URL, re-run with --tunnel-hostname.
+EOF
+  fi
+  printf '\n'
+fi
 
 if [[ "${GOOGLE_OAUTH_CONFIGURED}" -eq 1 ]]; then
   cat <<EOF
