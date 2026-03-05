@@ -32,33 +32,5 @@
             <img src="{{ url_for('kiosk.label_preview', label_code=job.label_code) }}" alt="Generated label preview">
         </div>
     {% endif %}
-
-    <p id="kioskReturnMessage">
-        Returning to <strong>Start a Print</strong> in
-        <strong><span id="returnCountdown">10</span></strong> seconds.
-    </p>
-    <a class="button-link" href="{{ url_for('kiosk.register') }}">Start a Print Now</a>
 </section>
-
-<script>
-    (() => {
-        const countdownEl = document.getElementById("returnCountdown");
-        const targetUrl = "{{ url_for('kiosk.register') }}";
-        let seconds = 10;
-
-        const tick = () => {
-            seconds -= 1;
-            if (countdownEl && seconds >= 0) {
-                countdownEl.textContent = String(seconds);
-            }
-            if (seconds <= 0) {
-                window.location.assign(targetUrl);
-                return;
-            }
-            setTimeout(tick, 1000);
-        };
-
-        setTimeout(tick, 1000);
-    })();
-</script>
 {% endblock %}

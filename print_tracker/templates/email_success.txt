@@ -1,10 +1,9 @@
 Hi {{ job.user_name }},
 
-Your print "{{ job.file_name }}" is complete and ready for pickup.
+Great news — your 3D print "{{ job.file_name }}" is complete and ready for pickup!
 
 Print ID: {{ job.label_code }}
 Project type: {{ job.category_label }}
-
 {% if job.course_number %}
 Course #: {{ job.course_number }}
 {% endif %}
@@ -23,5 +22,8 @@ Staff note:
 {{ job.completion_notes }}
 {% endif %}
 
-Thanks,
-Makerspace Team
+Please pick up your print at the Ask Us desk. You can find the current hours at https://lib.ncsu.edu/hours
+
+Thanks for using the Makerspace!
+
+NC State University Libraries Makerspace Team

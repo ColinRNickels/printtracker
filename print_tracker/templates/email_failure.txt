@@ -1,11 +1,9 @@
 Hi {{ job.user_name }},
 
-We have an update about your print "{{ job.file_name }}".
-It was marked as unsuccessful and needs attention before pickup.
+Thank you for using the NC State Libraries Makerspace! We wanted to let you know that your 3D print ran into an issue. Unfortunately, this print was not able to complete successfully.
 
 Print ID: {{ job.label_code }}
 Project type: {{ job.category_label }}
-
 {% if job.course_number %}
 Course #: {{ job.course_number }}
 {% endif %}
@@ -20,11 +18,15 @@ PI: {{ job.pi_name }}
 {% endif %}
 
 {% if job.completion_notes %}
-Failure description:
+Here's what our team noted:
 {{ job.completion_notes }}
 {% endif %}
 
-Please visit the makerspace desk for next steps.
+We know this can be frustrating, and we're happy to help you get your project back on track. Please stop by the makerspace desk and our staff will be glad to assist you with next steps — whether that's adjusting your file, reprinting, or exploring other options.
 
-Thanks,
-Makerspace Team
+You can find the current hours of the space at https://lib.ncsu.edu/hours
+
+Thanks for your patience, and we look forward to seeing you!
+
+Warm regards,
+NC State University Libraries Makerspace Team

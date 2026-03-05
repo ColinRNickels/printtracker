@@ -362,6 +362,7 @@ button:hover {
 }
 
 .status-options legend {
+    width: 100%;
     font-size: 0.95rem;
     font-weight: 600;
     color: var(--muted);

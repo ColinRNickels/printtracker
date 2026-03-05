@@ -19,8 +19,8 @@ SKIP_CUPS=0
 SKIP_DB_INIT=0
 SETUP_GOOGLE_OAUTH=-1
 GOOGLE_CLIENT_SECRETS=""
-GOOGLE_GMAIL_SENDER=""
-GOOGLE_SPREADSHEET_ID=""
+GOOGLE_GMAIL_SENDER="library_makerspace@ncsu.edu"
+GOOGLE_SPREADSHEET_ID="1H0y3uRWZIUOXlwIJcKXujPLFAVzN3LjpZ9ACoJ2LNck"
 GOOGLE_WORKSHEET="PrintJobs"
 SETUP_TUNNEL=-1
 
@@ -581,6 +581,16 @@ if [[ -f "${LOGO_DEST}" ]]; then
 fi
 set_env_value "${ENV_FILE}" "DEFAULT_PRINTER_NAME" "Makerspace"
 
+# Preserve existing go.ncsu.edu token if already set
+EXISTING_GO_TOKEN="$(get_env_value "${ENV_FILE}" "GO_NCSU_API_TOKEN")"
+if [[ -z "${EXISTING_GO_TOKEN}" ]]; then
+  set_env_value "${ENV_FILE}" "GO_NCSU_API_TOKEN" ""
+fi
+EXISTING_GO_SLUG="$(get_env_value "${ENV_FILE}" "GO_NCSU_LINK_SLUG")"
+if [[ -z "${EXISTING_GO_SLUG}" ]]; then
+  set_env_value "${ENV_FILE}" "GO_NCSU_LINK_SLUG" "makerspace-print-label"
+fi
+
 set_env_value "${ENV_FILE}" "STAFF_PASSWORD" "${STAFF_PASSWORD}"
 
 GOOGLE_OAUTH_CONFIGURED=0
@@ -638,6 +648,9 @@ if [[ "${SETUP_TUNNEL}" -eq 1 ]]; then
     run_root cloudflared service uninstall 2>/dev/null || true
     run_root systemctl stop cloudflared-quick 2>/dev/null || true
 
+    TUNNEL_SCRIPT="${APP_DIR}/scripts/start_tunnel.sh"
+    chmod +x "${TUNNEL_SCRIPT}"
+
     run_root tee /etc/systemd/system/cloudflared-quick.service >/dev/null <<CFDEOF
 [Unit]
 Description=Cloudflare Quick Tunnel for Print Tracker
@@ -645,7 +658,10 @@ After=network-online.target ${SERVICE_NAME}.service
 Wants=network-online.target
 
 [Service]
-ExecStart=/usr/bin/cloudflared tunnel --url http://localhost:${PORT}
+Environment=APP_PORT=${PORT}
+Environment=ENV_FILE=${ENV_FILE}
+Environment=SERVICE_NAME=${SERVICE_NAME}
+ExecStart=${TUNNEL_SCRIPT}
 Restart=always
 RestartSec=5
 

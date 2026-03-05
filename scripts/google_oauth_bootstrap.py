@@ -78,8 +78,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--client-secrets",
-        required=True,
-        help="Path to OAuth client JSON downloaded from Google Cloud.",
+        default="~/client_secret.json",
+        help="Path to OAuth client JSON downloaded from Google Cloud (default: ~/client_secret.json).",
     )
     parser.add_argument(
         "--gmail-sender",

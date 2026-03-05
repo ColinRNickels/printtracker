@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background-color:#f6f6f6;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#2d2d2d;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f6f6f6;padding:24px 0;">
+<tr><td align="center">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #dddddd;">
+    <tr>
+        <td style="padding:20px 24px;border-bottom:3px solid #cc0000;text-align:center;background-color:#ffffff;">
+            {% if logo_cid %}<img src="cid:{{ logo_cid }}" alt="NC State Libraries Makerspace" style="max-width:360px;height:auto;">{% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td style="padding:24px 24px 32px;">
+            <p style="margin:0 0 16px;font-size:16px;line-height:1.5;">Hi {{ job.user_name }},</p>
+
+            <p style="margin:0 0 16px;font-size:16px;line-height:1.5;">Thank you for using the NC State Libraries Makerspace! We wanted to let you know that we ran into an issue with your 3D print <strong>&ldquo;{{ job.file_name }}&rdquo;</strong>. Unfortunately, this print was not able to complete successfully.</p>
+
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+                <tr><td style="padding:2px 8px 2px 0;font-weight:700;">Print&nbsp;ID:</td><td>{{ job.label_code }}</td></tr>
+                <tr><td style="padding:2px 8px 2px 0;font-weight:700;">Project&nbsp;type:</td><td>{{ job.category_label }}</td></tr>
+                {% if job.course_number %}<tr><td style="padding:2px 8px 2px 0;font-weight:700;">Course&nbsp;#:</td><td>{{ job.course_number }}</td></tr>{% endif %}
+                {% if job.instructor %}<tr><td style="padding:2px 8px 2px 0;font-weight:700;">Instructor:</td><td>{{ job.instructor }}</td></tr>{% endif %}
+                {% if job.department %}<tr><td style="padding:2px 8px 2px 0;font-weight:700;">Department:</td><td>{{ job.department }}</td></tr>{% endif %}
+                {% if job.pi_name %}<tr><td style="padding:2px 8px 2px 0;font-weight:700;">PI:</td><td>{{ job.pi_name }}</td></tr>{% endif %}
+            </table>
+
+            {% if job.completion_notes %}
+            <p style="margin:0 0 4px;font-size:15px;font-weight:700;">Here&rsquo;s what our team noted:</p>
+            <p style="margin:0 0 16px;font-size:15px;line-height:1.5;padding:12px;background-color:#f6f6f6;border-radius:6px;">{{ job.completion_notes }}</p>
+            {% endif %}
+
+            <p style="margin:0 0 16px;font-size:16px;line-height:1.5;">We know this can be frustrating, and we&rsquo;re happy to help you get your project back on track. Please stop by the makerspace desk and our staff will be glad to assist you with next steps&mdash;whether that&rsquo;s adjusting your file, reprinting, or exploring other options.</p>
+
+            <p style="margin:0 0 16px;font-size:16px;line-height:1.5;">You can find the current hours of the space at <a href="https://lib.ncsu.edu/hours" style="color:#cc0000;">lib.ncsu.edu/hours</a>.</p>
+
+            <p style="margin:0 0 4px;font-size:16px;line-height:1.5;">Thanks for your patience, and we look forward to seeing you!</p>
+            <p style="margin:0;font-size:16px;line-height:1.5;">Warm regards,<br><strong>NC State Libraries Makerspace Team</strong></p>
+        </td>
+    </tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>
