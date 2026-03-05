@@ -77,10 +77,20 @@ class Config:
         "true",
         "yes",
     }
-    GOOGLE_SHEETS_SPREADSHEET_ID = os.environ.get(
+    _raw_spreadsheet_id = os.environ.get(
         "GOOGLE_SHEETS_SPREADSHEET_ID",
         "1H0y3uRWZIUOXlwIJcKXujPLFAVzN3LjpZ9ACoJ2LNck",
     ).strip()
+    # Accept a full Google Sheets URL and extract just the ID.
+    if "/spreadsheets/d/" in _raw_spreadsheet_id:
+        import re as _re
+
+        _match = _re.search(r"/spreadsheets/d/([^/]+)", _raw_spreadsheet_id)
+        GOOGLE_SHEETS_SPREADSHEET_ID = (
+            _match.group(1) if _match else _raw_spreadsheet_id
+        )
+    else:
+        GOOGLE_SHEETS_SPREADSHEET_ID = _raw_spreadsheet_id
     GOOGLE_SHEETS_WORKSHEET = os.environ.get(
         "GOOGLE_SHEETS_WORKSHEET", "PrintJobs"
     ).strip()
