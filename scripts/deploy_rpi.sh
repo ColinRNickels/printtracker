@@ -125,7 +125,7 @@ tui_field() {
 tui_prompt() {
   local label="$1" default="$2"
   printf '\n  %b%s%b %b[%s]%b: ' \
-    "${C_BOLD}" "${label}" "${C_RESET}" "${C_DIM}" "${default}" "${C_RESET}"
+    "${C_BOLD}" "${label}" "${C_RESET}" "${C_CYAN}" "${default}" "${C_RESET}"
 }
 
 # ── Core helpers ──────────────────────────────────────────────────────────
