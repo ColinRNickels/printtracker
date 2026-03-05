@@ -23,7 +23,6 @@ GOOGLE_GMAIL_SENDER=""
 GOOGLE_SPREADSHEET_ID=""
 GOOGLE_WORKSHEET="PrintJobs"
 SETUP_TUNNEL=-1
-TUNNEL_TOKEN=""
 
 usage() {
   cat <<'EOF'
@@ -51,9 +50,8 @@ Options:
   --google-spreadsheet-id ID
                            Spreadsheet ID for Google Sheets sync (optional).
   --google-worksheet NAME  Worksheet tab name (default: PrintJobs).
-  --setup-tunnel           Configure a Cloudflare Tunnel during deploy.
+  --setup-tunnel           Set up a Cloudflare quick tunnel (free, no domain needed).
   --no-tunnel              Skip Cloudflare Tunnel setup.
-  --tunnel-token TOKEN     Tunnel token from Zero Trust dashboard.
   --logo-source PATH       Optional local PNG path for label logo.
   --skip-apt               Skip apt package install/update.
   --skip-cups              Skip CUPS service setup and printer checks.
@@ -314,11 +312,6 @@ while [[ $# -gt 0 ]]; do
       SETUP_TUNNEL=0
       shift
       ;;
-    --tunnel-token)
-      TUNNEL_TOKEN="$2"
-      SETUP_TUNNEL=1
-      shift 2
-      ;;
     --logo-source)
       LOGO_SOURCE="$2"
       shift 2
@@ -396,20 +389,8 @@ if [[ "${NON_INTERACTIVE}" -eq 0 ]]; then
   PRINTER_QUEUE="$(prompt_default "CUPS queue name" "${PRINTER_QUEUE}")"
   LABEL_MEDIA="$(prompt_default "CUPS media token" "${LABEL_MEDIA}")"
   if [[ "${SETUP_TUNNEL}" -lt 0 ]]; then
-    if prompt_yes_no "Set up a Cloudflare Tunnel for public HTTPS access" "y"; then
+    if prompt_yes_no "Set up a Cloudflare quick tunnel for public HTTPS access (free, no domain needed)" "y"; then
       SETUP_TUNNEL=1
-      printf '\nTo get a tunnel token:\n'
-      printf '  1) Go to https://one.dash.cloudflare.com\n'
-      printf '  2) Navigate to Networks > Tunnels > Create a tunnel\n'
-      printf '  3) Choose "Cloudflared" connector\n'
-      printf '  4) Name the tunnel (e.g. print-tracker)\n'
-      printf '  5) Copy the tunnel token from the install command\n'
-      printf '     (the long string after --token in the command they show)\n\n'
-      read -r -p "Paste your tunnel token: " TUNNEL_TOKEN
-      if [[ -z "${TUNNEL_TOKEN}" ]]; then
-        warn "No tunnel token provided. Skipping tunnel setup."
-        SETUP_TUNNEL=0
-      fi
     else
       SETUP_TUNNEL=0
     fi
@@ -646,15 +627,38 @@ TUNNEL_CONFIGURED=0
 if [[ "${SETUP_TUNNEL}" -lt 0 ]]; then
   SETUP_TUNNEL=0
 fi
-if [[ "${SETUP_TUNNEL}" -eq 1 && -n "${TUNNEL_TOKEN}" ]]; then
+if [[ "${SETUP_TUNNEL}" -eq 1 ]]; then
   if ! command -v cloudflared >/dev/null 2>&1; then
     warn "cloudflared not installed. Tunnel setup skipped."
   else
-    log "Installing Cloudflare Tunnel as a system service..."
-    # Remove any previous cloudflared service so we can re-install cleanly
+    log "Setting up Cloudflare quick tunnel as a systemd service..."
+    # Remove any previous cloudflared service to avoid conflicts
+    run_root systemctl stop cloudflared 2>/dev/null || true
+    run_root systemctl disable cloudflared 2>/dev/null || true
     run_root cloudflared service uninstall 2>/dev/null || true
-    run_root cloudflared service install "${TUNNEL_TOKEN}"
-    run_root systemctl enable --now cloudflared
+    run_root systemctl stop cloudflared-quick 2>/dev/null || true
+
+    run_root tee /etc/systemd/system/cloudflared-quick.service >/dev/null <<CFDEOF
+[Unit]
+Description=Cloudflare Quick Tunnel for Print Tracker
+After=network-online.target ${SERVICE_NAME}.service
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/cloudflared tunnel --url http://localhost:${PORT}
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+CFDEOF
+    run_root systemctl daemon-reload
+    run_root systemctl enable --now cloudflared-quick
+
+    # Wait a moment for the tunnel to come up and grab the URL
+    sleep 5
+    TUNNEL_URL="$(journalctl -u cloudflared-quick --no-pager -n 50 2>/dev/null \
+      | grep -oP 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -1 || true)"
     TUNNEL_CONFIGURED=1
   fi
 fi
@@ -717,14 +721,28 @@ EOF
 
 if [[ "${TUNNEL_CONFIGURED}" -eq 1 ]]; then
   cat <<EOF
-Cloudflare Tunnel is running:
-- Service: sudo systemctl status cloudflared
-- Logs: sudo journalctl -u cloudflared -f
-- Configure the public hostname in the Zero Trust dashboard:
-  https://one.dash.cloudflare.com → Networks → Tunnels → configure
-  Add a public hostname pointing to http://localhost:${PORT}
-
+Cloudflare Quick Tunnel is running:
+- Service: sudo systemctl status cloudflared-quick
+- Logs: sudo journalctl -u cloudflared-quick -f
 EOF
+  if [[ -n "${TUNNEL_URL:-}" ]]; then
+    cat <<EOF
+- Public URL: ${TUNNEL_URL}
+
+Update KIOSK_BASE_URL in ${ENV_FILE} to this URL, then restart:
+  sudo systemctl restart ${SERVICE_NAME}
+
+NOTE: This URL changes every time the tunnel restarts.
+For a permanent URL, add a domain to Cloudflare and use a named tunnel.
+EOF
+  else
+    cat <<EOF
+
+Could not detect the tunnel URL yet. Check with:
+  sudo journalctl -u cloudflared-quick -n 20 | grep trycloudflare
+EOF
+  fi
+  printf '\n'
 fi
 
 if [[ "${GOOGLE_OAUTH_CONFIGURED}" -eq 1 ]]; then
