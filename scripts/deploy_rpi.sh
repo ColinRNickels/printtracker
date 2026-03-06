@@ -626,6 +626,7 @@ LOGO
   tui_explain "Both features require an OAuth credential file from Google Cloud."
   tui_explain "Someone on your team should have set up a Google Cloud project and"
   tui_explain "downloaded a file called something like 'client_secret_XXXXX.json'."
+  tui_explain "  → https://console.cloud.google.com/apis/credentials"
   printf '\n'
   tui_hint "If you have that file, say YES."
   tui_hint "If you don't have it yet, say NO — you can configure this later."
@@ -640,10 +641,9 @@ LOGO
       tui_explain "  Where is the OAuth client JSON file?"
       printf '\n'
       tui_explain "  How to find it:"
-      tui_explain "    1. Go to console.cloud.google.com"
-      tui_explain "    2. Navigate to APIs & Services → Credentials"
-      tui_explain "    3. Under 'OAuth 2.0 Client IDs', click the download icon"
-      tui_explain "    4. Save the file (it's usually called 'client_secret_XXXXX.json')"
+      tui_explain "    1. Go to https://console.cloud.google.com/apis/credentials"
+      tui_explain "    2. Under 'OAuth 2.0 Client IDs', click the download icon"
+      tui_explain "    3. Save the file (it's usually called 'client_secret_XXXXX.json')"
       printf '\n'
       tui_explain "  Enter the full path to the file, or press Enter if it's in"
       tui_explain "  the default location shown."
@@ -1173,8 +1173,9 @@ if [[ "${GOOGLE_OAUTH_CONFIGURED}" -eq 0 && "${SETUP_GOOGLE_OAUTH}" -ne 1 ]]; th
   printf '\n  %bGoogle Integration (not set up yet)%b\n\n' "${C_BOLD}" "${C_RESET}"
   tui_explain "  To enable Gmail notifications and Google Sheets sync later:"
   printf '\n'
-  printf '  %b 1 %b  Get OAuth credentials from Google Cloud Console\n' "${C_BG_CYAN}${C_WHITE}" "${C_RESET}"
-  tui_explain "       APIs & Services → Credentials → OAuth 2.0 Client IDs → Download"
+  printf '  %b 1 %b  Get OAuth credentials from Google Cloud Console:\n' "${C_BG_CYAN}${C_WHITE}" "${C_RESET}"
+  printf '       https://console.cloud.google.com/apis/credentials\n'
+  tui_explain "       Under 'OAuth 2.0 Client IDs' → click the download icon"
   printf '\n'
   printf '  %b 2 %b  Run the bootstrap script:\n' "${C_BG_CYAN}${C_WHITE}" "${C_RESET}"
   printf '       cd %s\n' "${APP_DIR}"
