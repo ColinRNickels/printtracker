@@ -1,11 +1,12 @@
 {% extends "base.html" %}
+{% block title %}Staff Dashboard — Print Tracker{% endblock %}
 {% block content %}
 <section class="panel">
     <h2>Staff Dashboard</h2>
     <p>Scan a QR code to open a print record instantly, then mark it Finished or Failed.</p>
     <form method="post" action="{{ url_for('staff.logout') }}" class="inline-action">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="button-link">Lock Staff Page</button>
+        <button type="submit" class="button-link button-danger">Lock Staff Page</button>
     </form>
 
     <form method="post" action="{{ url_for('staff.scan') }}" class="scan-form">
@@ -18,8 +19,12 @@
     </form>
 </section>
 
-<section class="panel">
-    <h3>Operational Settings</h3>
+<section class="panel collapsible" id="settingsPanel">
+    <h3 class="collapsible-toggle" id="settingsToggle">
+        Operational Settings
+        <span class="toggle-icon" aria-hidden="true">&#9660;</span>
+    </h3>
+    <div class="collapsible-body" id="settingsBody">
     <p>These settings apply immediately to this kiosk.</p>
     <form method="post" action="{{ url_for('staff.update_settings') }}" class="kiosk-compact-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -53,6 +58,7 @@
             <button type="submit">Save Settings</button>
         </div>
     </form>
+    </div>
 </section>
 
 <section class="panel">
@@ -74,13 +80,13 @@
                     <td>{{ job.label_code }}</td>
                     <td>{{ job.file_name }}</td>
                     <td>{{ job.user_name }}</td>
-                    <td>{{ job.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ job.created_at.strftime('%Y-%m-%d %H:%M') }} <abbr class="tz-label">local</abbr></td>
                     <td>
                         <div class="inline-actions">
-                            <a href="{{ url_for('staff.complete_job', label_code=job.label_code) }}">Open</a>
+                            <a class="button-link" href="{{ url_for('staff.complete_job', label_code=job.label_code) }}">Open</a>
                             <form method="post" action="{{ url_for('staff.reprint', label_code=job.label_code) }}" class="inline-action">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="button-link">Reprint</button>
+                                <button type="submit" class="button-link button-link-reprint">Reprint</button>
                             </form>
                         </div>
                     </td>
@@ -112,13 +118,13 @@
                 <tr>
                     <td>{{ job.label_code }}</td>
                     <td>{{ job.file_name }}</td>
-                    <td>{{ job.status_label }}</td>
+                    <td><span class="status-{{ job.status }}">{{ job.status_label }}</span></td>
                     <td>{{ job.completed_by }}</td>
-                    <td>{{ job.completed_at.strftime('%Y-%m-%d %H:%M') if job.completed_at else '' }}</td>
+                    <td>{{ job.completed_at.strftime('%Y-%m-%d %H:%M') if job.completed_at else '' }}{% if job.completed_at %} <abbr class="tz-label">local</abbr>{% endif %}</td>
                     <td>
                         <form method="post" action="{{ url_for('staff.reprint', label_code=job.label_code) }}" class="inline-action">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="button-link">Reprint</button>
+                            <button type="submit" class="button-link button-link-reprint">Reprint</button>
                         </form>
                     </td>
                 </tr>
@@ -132,26 +138,51 @@
 
 <script>
     (() => {
-        const scanInput = document.getElementById("scanValue");
-        if (!scanInput) {
-            return;
+        /* ---- Collapsible settings panel ---- */
+        const settingsToggle = document.getElementById("settingsToggle");
+        const settingsBody = document.getElementById("settingsBody");
+        if (settingsToggle && settingsBody) {
+            const stored = localStorage.getItem("pt_settings_open");
+            const isOpen = stored === "true";
+            settingsBody.style.display = isOpen ? "" : "none";
+            settingsToggle.querySelector(".toggle-icon").textContent = isOpen ? "\u25B2" : "\u25BC";
+            settingsToggle.addEventListener("click", () => {
+                const nowOpen = settingsBody.style.display === "none";
+                settingsBody.style.display = nowOpen ? "" : "none";
+                settingsToggle.querySelector(".toggle-icon").textContent = nowOpen ? "\u25B2" : "\u25BC";
+                localStorage.setItem("pt_settings_open", String(nowOpen));
+            });
         }
-        let submitTimer = null;
-        scanInput.addEventListener("input", () => {
-            const value = scanInput.value.trim();
-            if (!value) {
-                return;
-            }
-            const looksLikeLegacyId = /^PT-[A-F0-9]{8}$/i.test(value);
-            const looksLikeTimestampId = /^PT-\d{8}-\d{6}-\d{2}$/i.test(value);
-            const looksLikeUrl = value.includes("/staff/complete/PT-");
-            if ((looksLikeLegacyId || looksLikeTimestampId || looksLikeUrl) && !value.includes(" ")) {
+
+        /* ---- Scan auto-submit with proper debounce (waits for input to stop) ---- */
+        const scanInput = document.getElementById("scanValue");
+        if (scanInput) {
+            let submitTimer = null;
+            scanInput.addEventListener("input", () => {
                 if (submitTimer) {
                     clearTimeout(submitTimer);
+                    submitTimer = null;
                 }
-                submitTimer = setTimeout(() => scanInput.form.requestSubmit(), 180);
-            }
-        });
+                const value = scanInput.value.trim();
+                if (!value) {
+                    return;
+                }
+                const looksLikeLegacyId = /^PT-[A-F0-9]{8}$/i.test(value);
+                const looksLikeTimestampId = /^PT-\d{8}-\d{6}-\d{2}$/i.test(value);
+                const looksLikeUrl = /\/staff\/(?:complete|s)\/PT-/i.test(value);
+                if ((looksLikeLegacyId || looksLikeTimestampId || looksLikeUrl) && !value.includes(" ")) {
+                    submitTimer = setTimeout(() => scanInput.form.requestSubmit(), 400);
+                }
+            });
+        }
+
+        /* ---- Reprint button feedback ---- */
+        for (const btn of document.querySelectorAll(".button-link-reprint")) {
+            btn.closest("form").addEventListener("submit", () => {
+                btn.disabled = true;
+                btn.textContent = "Sending\u2026";
+            });
+        }
     })();
 </script>
 {% endblock %}

@@ -3,6 +3,25 @@
 Print Tracker is a Flask app for managing 3D-print jobs across NC State
 University Libraries makerspaces (Makerspace and Maker Studio).
 
+## Goals
+
+1. **Replace paper-based print tracking** — eliminate hand-written sign-up
+   sheets and sticky notes currently used to manage 3D-print queues.
+2. **Self-service patron registration** — patrons register prints from
+   their phones so staff don't need to be present at every printer.
+3. **Automated patron notification** — email patrons when prints finish
+   (or fail) so they know when to pick up, reducing desk questions.
+4. **Durable record in Google Sheets** — every print syncs to a shared
+   Sheet that staff and administrators can browse and export directly.
+5. **Zero IT dependency** — runs on a Raspberry Pi with a Cloudflare
+   tunnel; no servers, DNS changes, or firewall requests needed.
+6. **Multi-location readiness** — supports multiple makerspaces today
+   (one Pi each) with a path to a centralized server later.
+7. **Reporting and accountability** — monthly usage reports with charts
+   and CSV exports for funding justification and trend tracking.
+
+---
+
 **Patron workflow:**
 A patron starts a 3D print, scans a QR code poster with their phone, fills
 in the registration form, and a label prints at the space's label station.

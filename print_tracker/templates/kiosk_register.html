@@ -1,9 +1,11 @@
 {% extends "base.html" %}
+{% block title %}Register Print — Print Tracker{% endblock %}
 {% block content %}
 <section class="panel kiosk-compact">
     <h2>Print in Progress</h2>
 
     <form method="post" class="kiosk-compact-form" id="kioskForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-grid two-col compact-row">
             <label>
                 First name
@@ -33,7 +35,7 @@
             <legend>Project type</legend>
             {% for value, label in category_options %}
                 <label class="type-card {% if form.category == value %}active{% endif %}">
-                    <input type="radio" name="category" value="{{ value }}" {% if form.category == value %}checked{% endif %}>
+                    <input type="radio" name="category" value="{{ value }}" {% if form.category == value %}checked{% endif %} required>
                     <span>{{ label }}</span>
                 </label>
             {% endfor %}
@@ -62,7 +64,7 @@
         </div>
 
         <div class="form-actions compact-actions">
-            <button type="submit">Print Label</button>
+            <button type="submit" id="kioskSubmitBtn">Print Label</button>
         </div>
     </form>
 </section>
@@ -146,6 +148,16 @@
         };
         emailLocal.addEventListener("input", validateEmail);
         validateEmail();
+
+        /* Submit loading state — prevent double-tap */
+        const submitBtn = document.getElementById("kioskSubmitBtn");
+        form.addEventListener("submit", () => {
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = "Printing…";
+                submitBtn.classList.add("btn-loading");
+            }
+        });
     })();
 </script>
 {% endblock %}

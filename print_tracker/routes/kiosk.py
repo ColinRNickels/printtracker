@@ -103,7 +103,7 @@ def register():
         "first_name": "",
         "last_name": "",
         "user_email_local": "",
-        "category": JOB_CATEGORY_PERSONAL,
+        "category": "",
         "course_number": "",
         "instructor": "",
         "department": "",

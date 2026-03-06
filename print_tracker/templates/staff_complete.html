@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block title %}{{ job.label_code }} — Print Tracker{% endblock %}
 {% block content %}
 <section class="panel">
     <h2>Print ID {{ job.label_code }}</h2>
@@ -19,7 +20,7 @@
         {% if job.pi_name %}
             <li><strong>PI:</strong> {{ job.pi_name }}</li>
         {% endif %}
-        <li><strong>Started:</strong> {{ job.created_at.strftime('%Y-%m-%d %H:%M') }}</li>
+        <li><strong>Started:</strong> {{ job.created_at.strftime('%Y-%m-%d %H:%M') }} <abbr class="tz-label" title="Server local time">local</abbr></li>
     </ul>
 
     {% if job.notes %}
@@ -29,7 +30,7 @@
     {% if job.is_completed %}
         <div class="status-card">
             <p><strong>Completed by:</strong> {{ job.completed_by }}</p>
-            <p><strong>Completed at:</strong> {{ job.completed_at.strftime('%Y-%m-%d %H:%M') if job.completed_at else '' }}</p>
+            <p><strong>Completed at:</strong> {{ job.completed_at.strftime('%Y-%m-%d %H:%M') if job.completed_at else '' }}{% if job.completed_at %} <abbr class="tz-label" title="Server local time">local</abbr>{% endif %}</p>
             <p><strong>Email status:</strong> {{ job.email_status }}</p>
             {% if job.email_error %}
                 <p><strong>Email details:</strong> {{ job.email_error }}</p>
@@ -55,7 +56,7 @@
 
             <label>
                 Completed by
-                <input name="completed_by" required>
+                <input id="completedBy" name="completed_by" required>
             </label>
 
             <label for="completionNotes">
@@ -63,13 +64,15 @@
                 <textarea id="completionNotes" name="completion_notes" rows="4"></textarea>
             </label>
 
-            <button type="submit">Mark Complete and Notify User</button>
+            <button type="submit" id="completeSubmitBtn">Mark Complete and Notify User</button>
         </form>
         <script>
             (() => {
                 const form = document.getElementById("completionForm");
                 const notes = document.getElementById("completionNotes");
                 const notesLabel = document.getElementById("completionNotesLabel");
+                const submitBtn = document.getElementById("completeSubmitBtn");
+                const completedByInput = document.getElementById("completedBy");
                 if (!form || !notes || !notesLabel) {
                     return;
                 }
@@ -87,6 +90,46 @@
                     input.addEventListener("change", sync);
                 }
                 sync();
+
+                /* Toggle active class on option-pills */
+                const syncPills = () => {
+                    for (const pill of form.querySelectorAll('.option-pill')) {
+                        const radio = pill.querySelector('input[type="radio"]');
+                        pill.classList.toggle('active', radio && radio.checked);
+                    }
+                };
+                for (const input of form.querySelectorAll('input[name="completion_status"]')) {
+                    input.addEventListener("change", syncPills);
+                }
+                syncPills();
+
+                /* Restore last-used staff name from localStorage */
+                if (completedByInput) {
+                    const saved = localStorage.getItem("pt_completed_by");
+                    if (saved && !completedByInput.value) {
+                        completedByInput.value = saved;
+                    }
+                }
+
+                /* Confirmation before sending email + loading state */
+                form.addEventListener("submit", (e) => {
+                    const selected = form.querySelector('input[name="completion_status"]:checked');
+                    const status = selected ? selected.value : "finished";
+                    const verb = status === "failed" ? "FAILED" : "Finished";
+                    if (!confirm(`Mark this print as ${verb} and email the patron?`)) {
+                        e.preventDefault();
+                        return;
+                    }
+                    /* Save staff name for next time */
+                    if (completedByInput && completedByInput.value.trim()) {
+                        localStorage.setItem("pt_completed_by", completedByInput.value.trim());
+                    }
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = "Sending\u2026";
+                        submitBtn.classList.add("btn-loading");
+                    }
+                });
             })();
         </script>
     {% endif %}
@@ -94,9 +137,19 @@
     <div class="inline-actions">
         <form method="post" action="{{ url_for('staff.reprint', label_code=job.label_code) }}" class="inline-action">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="button-link">Reprint Label</button>
+            <button type="submit" class="button-link button-link-reprint">Reprint Label</button>
         </form>
         <a class="button-link" href="{{ url_for('staff.dashboard') }}">Back to Dashboard</a>
     </div>
 </section>
+<script>
+    (() => {
+        for (const btn of document.querySelectorAll(".button-link-reprint")) {
+            btn.closest("form").addEventListener("submit", () => {
+                btn.disabled = true;
+                btn.textContent = "Sending\u2026";
+            });
+        }
+    })();
+</script>
 {% endblock %}

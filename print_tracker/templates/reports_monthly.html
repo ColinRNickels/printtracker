@@ -1,11 +1,12 @@
 {% extends "base.html" %}
+{% block title %}{{ month_label }} Report — Print Tracker{% endblock %}
 {% block content %}
 <section class="panel">
     <h2>Monthly Report: {{ month_label }}</h2>
     <form method="get" class="inline-form">
         <label>
             Month
-            <input type="month" name="month" value="{{ month_value }}">
+            <input type="month" name="month" value="{{ month_value }}" required>
         </label>
         <button type="submit">Load</button>
         <a class="button-link" href="{{ url_for('reports.monthly_csv', month=month_value) }}">Download CSV</a>
@@ -40,24 +41,22 @@
     <div class="chart-grid">
         <article class="chart-card chart-card-wide">
             <h4>Prints Per Month (Last 12 Months)</h4>
-            <canvas id="printsOverTimeChart" class="chart-canvas" aria-label="Prints per month trend"></canvas>
+            <div class="chart-canvas-wrap"><canvas id="printsOverTimeChart"></canvas></div>
         </article>
 
         <article class="chart-card">
-            <h4>Project Type Breakdown (Selected Month)</h4>
-            <canvas id="projectTypePieChart" class="chart-canvas chart-canvas-square" aria-label="Project type pie chart"></canvas>
-            <div id="projectTypeLegend" class="chart-legend"></div>
+            <h4>Project Type Breakdown</h4>
+            <div class="chart-canvas-wrap chart-canvas-wrap-square"><canvas id="projectTypePieChart"></canvas></div>
         </article>
 
         <article class="chart-card chart-card-wide">
-            <h4>Research Departments (Selected Month)</h4>
-            <canvas id="departmentBarChart" class="chart-canvas" aria-label="Research departments chart"></canvas>
+            <h4>Research Departments</h4>
+            <div class="chart-canvas-wrap" id="departmentChartWrap"><canvas id="departmentBarChart"></canvas></div>
         </article>
 
         <article class="chart-card">
-            <h4>Status Breakdown (Selected Month)</h4>
-            <canvas id="statusPieChart" class="chart-canvas chart-canvas-square" aria-label="Status pie chart"></canvas>
-            <div id="statusLegend" class="chart-legend"></div>
+            <h4>Status Breakdown</h4>
+            <div class="chart-canvas-wrap chart-canvas-wrap-square"><canvas id="statusPieChart"></canvas></div>
         </article>
     </div>
 </section>
@@ -87,19 +86,19 @@
 <section class="panel">
     <h3>Jobs</h3>
     <div class="table-wrap">
-    <table>
+    <table class="sortable-table" id="jobsTable">
         <thead>
             <tr>
-                <th>Print ID</th>
-                <th>File</th>
-                <th>Project Type</th>
-                <th>Course #</th>
-                <th>Instructor</th>
-                <th>Department</th>
-                <th>PI</th>
-                <th>Status</th>
-                <th>User</th>
-                <th>Created</th>
+                <th data-sort="string">Print ID</th>
+                <th data-sort="string">File</th>
+                <th data-sort="string">Project Type</th>
+                <th data-sort="string">Course #</th>
+                <th data-sort="string">Instructor</th>
+                <th data-sort="string">Department</th>
+                <th data-sort="string">PI</th>
+                <th data-sort="string">Status</th>
+                <th data-sort="string">User</th>
+                <th data-sort="string">Created</th>
             </tr>
         </thead>
         <tbody>
@@ -124,266 +123,163 @@
     </div>
 </section>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
     (() => {
         const chartData = {{ chart_data|tojson }};
         const palette = ["#cc0000", "#2d2d2d", "#f2a900", "#00843d", "#007fa3", "#7d2248", "#5f5f5f", "#69246d"];
+        const statusPalette = ["#5f5f5f", "#0f7b44", "#b1181e"];
 
-        const shortLabel = (value, max = 26) => {
-            if (!value) {
-                return "";
-            }
-            return value.length > max ? `${value.slice(0, max - 1)}...` : value;
-        };
+        Chart.defaults.font.family = "'Helvetica Neue', Helvetica, Arial, sans-serif";
+        Chart.defaults.font.size = 12;
+        Chart.defaults.plugins.legend.display = false;
 
-        const setupCanvas = (canvas) => {
-            const rect = canvas.getBoundingClientRect();
-            const dpr = window.devicePixelRatio || 1;
-            const width = Math.max(1, rect.width);
-            const height = Math.max(1, rect.height);
-            canvas.width = Math.floor(width * dpr);
-            canvas.height = Math.floor(height * dpr);
-            const ctx = canvas.getContext("2d");
-            if (!ctx) {
-                return null;
-            }
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            ctx.clearRect(0, 0, width, height);
-            return { ctx, width, height };
-        };
-
-        const drawNoData = (ctx, width, height, message) => {
-            ctx.fillStyle = "#5c5c5c";
-            ctx.font = "600 14px Helvetica Neue";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(message, width / 2, height / 2);
-        };
-
-        const renderLegend = (container, labels, values, colors) => {
-            if (!container) {
-                return;
-            }
-            container.innerHTML = "";
-            const total = values.reduce((sum, value) => sum + value, 0);
-            labels.forEach((label, idx) => {
-                const value = values[idx] || 0;
-                if (!value) {
-                    return;
-                }
-                const pct = total ? ((value / total) * 100).toFixed(0) : "0";
-                const row = document.createElement("div");
-                row.className = "chart-legend-item";
-                const swatch = document.createElement("span");
-                swatch.className = "chart-legend-swatch";
-                swatch.style.background = colors[idx % colors.length];
-                const text = document.createElement("span");
-                text.textContent = `${label}: ${value} (${pct}%)`;
-                row.appendChild(swatch);
-                row.appendChild(text);
-                container.appendChild(row);
-            });
-            if (!container.children.length) {
-                const empty = document.createElement("div");
-                empty.className = "chart-legend-empty";
-                empty.textContent = "No data";
-                container.appendChild(empty);
-            }
-        };
-
-        const drawLineChart = (canvas, labels, values) => {
-            const prepared = setupCanvas(canvas);
-            if (!prepared) {
-                return;
-            }
-            const { ctx, width, height } = prepared;
-            if (!values.length) {
-                drawNoData(ctx, width, height, "No data");
-                return;
-            }
-
-            const pad = { top: 18, right: 14, bottom: 36, left: 42 };
-            const chartW = width - pad.left - pad.right;
-            const chartH = height - pad.top - pad.bottom;
-            const maxValue = Math.max(1, ...values);
-            const tickCount = 4;
-
-            ctx.strokeStyle = "#dddddd";
-            ctx.fillStyle = "#5c5c5c";
-            ctx.font = "12px Helvetica Neue";
-            ctx.textAlign = "right";
-            ctx.textBaseline = "middle";
-
-            for (let i = 0; i <= tickCount; i += 1) {
-                const y = pad.top + (chartH * i) / tickCount;
-                const value = Math.round(maxValue - (maxValue * i) / tickCount);
-                ctx.beginPath();
-                ctx.moveTo(pad.left, y);
-                ctx.lineTo(width - pad.right, y);
-                ctx.stroke();
-                ctx.fillText(String(value), pad.left - 6, y);
-            }
-
-            ctx.strokeStyle = "#2d2d2d";
-            ctx.beginPath();
-            ctx.moveTo(pad.left, height - pad.bottom);
-            ctx.lineTo(width - pad.right, height - pad.bottom);
-            ctx.stroke();
-
-            const xFor = (idx) => {
-                if (values.length === 1) {
-                    return pad.left + chartW / 2;
-                }
-                return pad.left + (chartW * idx) / (values.length - 1);
-            };
-            const yFor = (value) => pad.top + chartH - (value / maxValue) * chartH;
-
-            ctx.strokeStyle = "#cc0000";
-            ctx.lineWidth = 2.2;
-            ctx.beginPath();
-            values.forEach((value, idx) => {
-                const x = xFor(idx);
-                const y = yFor(value);
-                if (idx === 0) {
-                    ctx.moveTo(x, y);
-                } else {
-                    ctx.lineTo(x, y);
-                }
-            });
-            ctx.stroke();
-
-            ctx.fillStyle = "#cc0000";
-            values.forEach((value, idx) => {
-                const x = xFor(idx);
-                const y = yFor(value);
-                ctx.beginPath();
-                ctx.arc(x, y, 3.2, 0, Math.PI * 2);
-                ctx.fill();
-            });
-
-            const step = Math.max(1, Math.ceil(labels.length / 6));
-            ctx.fillStyle = "#5c5c5c";
-            ctx.font = "11px Helvetica Neue";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "top";
-            labels.forEach((label, idx) => {
-                if (idx % step !== 0 && idx !== labels.length - 1) {
-                    return;
-                }
-                ctx.fillText(label, xFor(idx), height - pad.bottom + 6);
-            });
-        };
-
-        const drawPieChart = (canvas, labels, values, colors, legendContainer) => {
-            const prepared = setupCanvas(canvas);
-            if (!prepared) {
-                return;
-            }
-            const { ctx, width, height } = prepared;
-            const total = values.reduce((sum, value) => sum + value, 0);
-            renderLegend(legendContainer, labels, values, colors);
-            if (!total) {
-                drawNoData(ctx, width, height, "No data");
-                return;
-            }
-
-            const radius = Math.min(width, height) * 0.33;
-            const centerX = width / 2;
-            const centerY = height / 2;
-            let start = -Math.PI / 2;
-
-            values.forEach((value, idx) => {
-                if (value <= 0) {
-                    return;
-                }
-                const angle = (value / total) * Math.PI * 2;
-                const end = start + angle;
-                ctx.beginPath();
-                ctx.moveTo(centerX, centerY);
-                ctx.arc(centerX, centerY, radius, start, end);
-                ctx.closePath();
-                ctx.fillStyle = colors[idx % colors.length];
-                ctx.fill();
-                start = end;
-            });
-        };
-
-        const drawDepartmentChart = (canvas, labels, values) => {
-            const visibleRows = labels.length || 1;
-            canvas.style.height = `${Math.max(220, 58 + visibleRows * 30)}px`;
-            const prepared = setupCanvas(canvas);
-            if (!prepared) {
-                return;
-            }
-            const { ctx, width, height } = prepared;
-
-            if (!values.length) {
-                drawNoData(ctx, width, height, "No research department data");
-                return;
-            }
-
-            const pad = { top: 18, right: 18, bottom: 20, left: 230 };
-            const chartW = width - pad.left - pad.right;
-            const chartH = height - pad.top - pad.bottom;
-            const maxValue = Math.max(1, ...values);
-            const rowH = chartH / values.length;
-
-            labels.forEach((label, idx) => {
-                const value = values[idx];
-                const y = pad.top + idx * rowH + rowH * 0.15;
-                const barH = rowH * 0.7;
-                const barW = (value / maxValue) * chartW;
-
-                ctx.fillStyle = "#cc0000";
-                ctx.fillRect(pad.left, y, barW, barH);
-
-                ctx.fillStyle = "#2d2d2d";
-                ctx.font = "12px Helvetica Neue";
-                ctx.textAlign = "right";
-                ctx.textBaseline = "middle";
-                ctx.fillText(shortLabel(label, 30), pad.left - 8, y + barH / 2);
-
-                ctx.textAlign = "left";
-                ctx.fillText(String(value), pad.left + barW + 6, y + barH / 2);
-            });
-        };
-
-        const renderCharts = () => {
-            drawLineChart(
-                document.getElementById("printsOverTimeChart"),
-                chartData.prints_over_time.labels,
-                chartData.prints_over_time.values,
-            );
-            drawPieChart(
-                document.getElementById("projectTypePieChart"),
-                chartData.project_type.labels,
-                chartData.project_type.values,
-                palette,
-                document.getElementById("projectTypeLegend"),
-            );
-            drawDepartmentChart(
-                document.getElementById("departmentBarChart"),
-                chartData.department.labels,
-                chartData.department.values,
-            );
-            drawPieChart(
-                document.getElementById("statusPieChart"),
-                chartData.status.labels,
-                chartData.status.values,
-                ["#5f5f5f", "#0f7b44", "#b1181e"],
-                document.getElementById("statusLegend"),
-            );
-        };
-
-        let resizeTimer = null;
-        window.addEventListener("resize", () => {
-            if (resizeTimer) {
-                clearTimeout(resizeTimer);
-            }
-            resizeTimer = setTimeout(renderCharts, 140);
+        /* ---- Line chart: prints over time ---- */
+        new Chart(document.getElementById("printsOverTimeChart"), {
+            type: "line",
+            data: {
+                labels: chartData.prints_over_time.labels,
+                datasets: [{
+                    data: chartData.prints_over_time.values,
+                    borderColor: "#cc0000",
+                    backgroundColor: "rgba(204, 0, 0, 0.08)",
+                    fill: true,
+                    tension: 0.25,
+                    pointRadius: 4,
+                    pointBackgroundColor: "#cc0000",
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, ticks: { precision: 0 } },
+                },
+                plugins: {
+                    tooltip: { mode: "index", intersect: false },
+                },
+            },
         });
 
-        renderCharts();
+        /* ---- Pie chart: project type ---- */
+        new Chart(document.getElementById("projectTypePieChart"), {
+            type: "doughnut",
+            data: {
+                labels: chartData.project_type.labels,
+                datasets: [{
+                    data: chartData.project_type.values,
+                    backgroundColor: palette.slice(0, chartData.project_type.labels.length),
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: "bottom" },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                const pct = total ? ((ctx.parsed / total) * 100).toFixed(0) : 0;
+                                return `${ctx.label}: ${ctx.parsed} (${pct}%)`;
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        /* ---- Bar chart: departments ---- */
+        const deptWrap = document.getElementById("departmentChartWrap");
+        const deptRows = chartData.department.labels.length || 1;
+        deptWrap.style.height = `${Math.max(220, 58 + deptRows * 30)}px`;
+        new Chart(document.getElementById("departmentBarChart"), {
+            type: "bar",
+            data: {
+                labels: chartData.department.labels,
+                datasets: [{
+                    data: chartData.department.values,
+                    backgroundColor: "#cc0000",
+                }],
+            },
+            options: {
+                indexAxis: "y",
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { beginAtZero: true, ticks: { precision: 0 } },
+                },
+                plugins: {
+                    tooltip: { mode: "index", intersect: false },
+                },
+            },
+        });
+
+        /* ---- Pie chart: status ---- */
+        new Chart(document.getElementById("statusPieChart"), {
+            type: "doughnut",
+            data: {
+                labels: chartData.status.labels,
+                datasets: [{
+                    data: chartData.status.values,
+                    backgroundColor: statusPalette,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: "bottom" },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                const pct = total ? ((ctx.parsed / total) * 100).toFixed(0) : 0;
+                                return `${ctx.label}: ${ctx.parsed} (${pct}%)`;
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        /* ---- Sortable tables ---- */
+        for (const table of document.querySelectorAll(".sortable-table")) {
+            const headers = table.querySelectorAll("th[data-sort]");
+            let currentCol = -1;
+            let ascending = true;
+
+            headers.forEach((th, colIdx) => {
+                th.style.cursor = "pointer";
+                th.setAttribute("aria-sort", "none");
+                th.addEventListener("click", () => {
+                    if (currentCol === colIdx) {
+                        ascending = !ascending;
+                    } else {
+                        ascending = true;
+                        currentCol = colIdx;
+                    }
+                    headers.forEach((h) => {
+                        h.setAttribute("aria-sort", "none");
+                        h.classList.remove("sort-asc", "sort-desc");
+                    });
+                    th.setAttribute("aria-sort", ascending ? "ascending" : "descending");
+                    th.classList.add(ascending ? "sort-asc" : "sort-desc");
+
+                    const tbody = table.querySelector("tbody");
+                    const rows = Array.from(tbody.querySelectorAll("tr"));
+                    rows.sort((a, b) => {
+                        const aText = (a.children[colIdx]?.textContent || "").trim().toLowerCase();
+                        const bText = (b.children[colIdx]?.textContent || "").trim().toLowerCase();
+                        const cmp = aText.localeCompare(bText, undefined, { numeric: true });
+                        return ascending ? cmp : -cmp;
+                    });
+                    for (const row of rows) {
+                        tbody.appendChild(row);
+                    }
+                });
+            });
+        }
     })();
 </script>
 {% endblock %}

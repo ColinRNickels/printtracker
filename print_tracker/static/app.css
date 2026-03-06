@@ -537,13 +537,7 @@ th {
     margin: 0.75rem 0;
 }
 
-.qr-block img {
-    width: 200px;
-    height: 200px;
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    background: #fff;
-}
+/* Sized via the "Label preview" section below (see bottom of file) */
 
 /* ---- Reports metrics ---- */
 .metrics {
@@ -766,4 +760,217 @@ th {
     .kiosk-compact h2 {
         font-size: 2rem;
     }
+}
+
+/* ================================================================
+   Active nav link
+   ================================================================ */
+nav a.nav-active {
+    border-color: var(--brand);
+    color: var(--brand-strong);
+    background: #fff2f2;
+}
+
+/* ================================================================
+   Button loading state
+   ================================================================ */
+.btn-loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* ================================================================
+   Button-danger (destructive action variant of button-link)
+   ================================================================ */
+.button-danger {
+    border-color: var(--danger) !important;
+    color: var(--danger) !important;
+}
+
+.button-danger:hover {
+    background: #fef2f2;
+}
+
+/* ================================================================
+   Primary link button (styled like primary submit)
+   ================================================================ */
+.button-primary-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    border: 1px solid var(--brand-strong);
+    background: linear-gradient(180deg, var(--brand), var(--brand-strong));
+    color: #fff;
+    border-radius: 10px;
+    padding: 0.55rem 1rem;
+    font-weight: 700;
+    font-size: 1.1rem;
+    min-height: 52px;
+    width: 100%;
+    text-align: center;
+}
+
+.button-primary-link:hover {
+    filter: brightness(1.05);
+}
+
+@media (min-width: 768px) {
+    .button-primary-link {
+        width: auto;
+        min-width: 280px;
+    }
+}
+
+/* ================================================================
+   Collapsible panel sections
+   ================================================================ */
+.collapsible-toggle {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0;
+}
+
+.toggle-icon {
+    font-size: 0.75em;
+    color: var(--muted);
+    transition: transform 120ms ease;
+}
+
+.collapsible-body {
+    margin-top: 0.75rem;
+}
+
+/* ================================================================
+   Timezone labels
+   ================================================================ */
+.tz-label {
+    font-size: 0.75rem;
+    color: var(--ncsu-gray-600);
+    text-decoration: none;
+    border-bottom: none;
+    font-weight: 400;
+}
+
+/* ================================================================
+   Chart.js canvas wrappers (replace fixed-size canvas elements)
+   ================================================================ */
+.chart-canvas-wrap {
+    position: relative;
+    width: 100%;
+    height: 220px;
+}
+
+.chart-canvas-wrap-square {
+    height: 260px;
+}
+
+.chart-canvas-wrap canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+@media (min-width: 768px) {
+    .chart-canvas-wrap {
+        height: 260px;
+    }
+
+    .chart-canvas-wrap-square {
+        height: 300px;
+    }
+}
+
+/* ================================================================
+   Sortable table headers
+   ================================================================ */
+.sortable-table th[data-sort] {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.sortable-table th[data-sort]:hover {
+    color: var(--brand);
+}
+
+.sortable-table th[data-sort]::after {
+    content: " \25B4\25BE";
+    font-size: 0.65em;
+    color: var(--ncsu-gray-300);
+}
+
+.sortable-table th[data-sort].sort-asc::after {
+    content: " \25B2";
+    font-size: 0.7em;
+    color: var(--brand);
+}
+
+.sortable-table th[data-sort].sort-desc::after {
+    content: " \25BC";
+    font-size: 0.7em;
+    color: var(--brand);
+}
+
+/* ================================================================
+   Success page
+   ================================================================ */
+.success-heading {
+    color: var(--success);
+}
+
+.success-cta {
+    margin-top: 1rem;
+}
+
+.status-line.success {
+    color: var(--success);
+}
+
+/* ================================================================
+   Option-pill active state (radio/checkbox selected)
+   ================================================================ */
+.option-pill.active {
+    border-color: var(--brand);
+    background: #fef2f2;
+    box-shadow: 0 0 0 1px var(--brand);
+}
+
+/* ================================================================
+   Label preview (thermal labels are rectangular, not square)
+   ================================================================ */
+.qr-block img {
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: 200px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fff;
+}
+
+/* ================================================================
+   Flash auto-dismiss animation
+   ================================================================ */
+.flash.flash-fade-out {
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+/* ================================================================
+   Status text variants for completed jobs
+   ================================================================ */
+.status-finished {
+    color: var(--success);
+    font-weight: 600;
+}
+
+.status-failed {
+    color: var(--danger);
+    font-weight: 600;
 }

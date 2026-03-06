@@ -1,8 +1,9 @@
 {% extends "base.html" %}
+{% block title %}Print Registered — Print Tracker{% endblock %}
 {% block content %}
 <section class="panel">
-    <h2>Label Printing</h2>
-    <p class="status-line">Label is printing, please see staff if it doesn't print.</p>
+    <h2 class="success-heading">Print Registered</h2>
+    <p class="status-line success">Your label is printing. Please see staff if it doesn't appear.</p>
     {% if sync_error %}
         <p class="status-line warning">Saved locally, but cloud sync failed. Please tell staff.</p>
     {% endif %}
@@ -32,5 +33,31 @@
             <img src="{{ url_for('kiosk.label_preview', label_code=job.label_code) }}" alt="Generated label preview">
         </div>
     {% endif %}
+
+    <div class="form-actions success-cta">
+        <a class="button-primary-link" href="{{ url_for('kiosk.register') }}">
+            Register Another Print <span id="successCountdown"></span>
+        </a>
+    </div>
 </section>
+
+<script>
+    (() => {
+        const targetUrl = "{{ url_for('kiosk.register') }}";
+        const countdownEl = document.getElementById("successCountdown");
+        let seconds = 30;
+        const tick = () => {
+            if (countdownEl) {
+                countdownEl.textContent = `(${seconds}s)`;
+            }
+            if (seconds <= 0) {
+                window.location.assign(targetUrl);
+                return;
+            }
+            seconds -= 1;
+            setTimeout(tick, 1000);
+        };
+        tick();
+    })();
+</script>
 {% endblock %}

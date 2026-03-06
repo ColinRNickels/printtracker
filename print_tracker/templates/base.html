@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>Print Tracker</title>
+    <title>{% block title %}Print Tracker{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
 <body class="{% if request.endpoint %}route-{{ request.endpoint|replace('.', '-') }}{% endif %}">
@@ -13,10 +13,10 @@
             <img src="{{ url_for('static', filename='ncsu-makerspace-logo-long-v2.png') }}" alt="NC State University Libraries Makerspace logo">
         </a>
         <nav>
-            <a href="{{ url_for('kiosk.register') }}">Kiosk</a>
-            <a href="{{ url_for('staff.dashboard') }}">Staff</a>
+            <a href="{{ url_for('kiosk.register') }}" {% if request.endpoint and request.endpoint.startswith('kiosk.') %}class="nav-active"{% endif %}>Kiosk</a>
+            <a href="{{ url_for('staff.dashboard') }}" {% if request.endpoint and request.endpoint.startswith('staff.') %}class="nav-active"{% endif %}>Staff</a>
             {% if not on_kiosk_route %}
-                <a href="{{ url_for('reports.monthly') }}">Reports</a>
+                <a href="{{ url_for('reports.monthly') }}" {% if request.endpoint and request.endpoint.startswith('reports.') %}class="nav-active"{% endif %}>Reports</a>
             {% endif %}
         </nav>
     </header>
@@ -34,5 +34,15 @@
 
         {% block content %}{% endblock %}
     </main>
+
+    <script>
+        /* Auto-dismiss success flash messages after 5 seconds */
+        document.querySelectorAll(".flash-success").forEach((el) => {
+            setTimeout(() => {
+                el.classList.add("flash-fade-out");
+                el.addEventListener("transitionend", () => el.remove());
+            }, 5000);
+        });
+    </script>
 </body>
 </html>

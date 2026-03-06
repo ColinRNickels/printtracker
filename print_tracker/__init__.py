@@ -117,7 +117,6 @@ def create_app() -> Flask:
         _apply_schema_upgrades()
 
     app.register_blueprint(kiosk_bp)
-    csrf.exempt(kiosk_bp)  # public kiosk form; phones idle on the page
     app.register_blueprint(staff_bp)
     app.register_blueprint(reports_bp)
 
