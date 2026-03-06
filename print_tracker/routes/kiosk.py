@@ -86,17 +86,10 @@ def _normalize_ncsu_email(raw_value: str) -> str:
         raise ValueError("Email is required.")
 
     if "@" in value:
-        local_part, domain = value.split("@", 1)
-    else:
-        local_part, domain = value, NCSU_EMAIL_DOMAIN
-
-    local_part = local_part.strip()
-    domain = domain.strip()
-    if not local_part:
+        raise ValueError("Enter your Unity ID only, without @ncsu.edu.")
+    if not value:
         raise ValueError("Email is required.")
-    if domain and domain != NCSU_EMAIL_DOMAIN:
-        raise ValueError(f"Email must use @{NCSU_EMAIL_DOMAIN}.")
-    return f"{local_part}@{NCSU_EMAIL_DOMAIN}"
+    return f"{value}@{NCSU_EMAIL_DOMAIN}"
 
 
 def _normalize_person_name(raw_value: str) -> str:
@@ -222,9 +215,8 @@ def qr_code_image(label_code: str):
 @bp.route("/label-preview/<label_code>.png")
 def label_preview(label_code: str):
     PrintJob.query.filter_by(label_code=label_code.upper()).first_or_404()
-    label_path = (
-        Path(current_app.config["LABEL_OUTPUT_DIR"]) / f"{label_code.upper()}.png"
-    ).resolve()
-    if not label_path.exists():
+    output_dir = Path(current_app.config["LABEL_OUTPUT_DIR"]).resolve()
+    label_path = (output_dir / f"{label_code.upper()}.png").resolve()
+    if not label_path.is_relative_to(output_dir) or not label_path.exists():
         abort(404)
     return send_file(label_path, mimetype="image/png")

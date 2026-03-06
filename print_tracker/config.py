@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+from werkzeug.security import generate_password_hash
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_DB_PATH = BASE_DIR / "instance" / "print_tracker.db"
@@ -13,7 +15,14 @@ class Config:
         "DATABASE_URL", f"sqlite:///{DEFAULT_DB_PATH}"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    STAFF_PASSWORD = os.environ.get("STAFF_PASSWORD", "staffpw")
+    STAFF_PASSWORD_HASH = generate_password_hash(
+        os.environ.get("STAFF_PASSWORD", "staffpw")
+    )
+
+    # Session cookie hardening
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
 
     # Label printing
     LABEL_PRINT_MODE = os.environ.get("LABEL_PRINT_MODE", "mock")  # mock | cups
@@ -79,7 +88,7 @@ class Config:
     }
     _raw_spreadsheet_id = os.environ.get(
         "GOOGLE_SHEETS_SPREADSHEET_ID",
-        "1H0y3uRWZIUOXlwIJcKXujPLFAVzN3LjpZ9ACoJ2LNck",
+        "",
     ).strip()
     # Accept a full Google Sheets URL and extract just the ID.
     if "/spreadsheets/d/" in _raw_spreadsheet_id:

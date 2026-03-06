@@ -11,8 +11,7 @@ from flask import (
     session,
     url_for,
 )
-
-from ..extensions import db
+from ..extensions import db, limiter
 from ..models import (
     JOB_STATUS_FAILED,
     JOB_STATUS_FINISHED,
@@ -91,11 +90,12 @@ def require_staff_password():
 
 
 @bp.route("/login", methods=["GET", "POST"])
+@limiter.limit("10/minute")
 def login():
     next_url = _sanitize_next_url(request.args.get("next", ""))
     if request.method == "POST":
         password = request.form.get("password", "")
-        if password == current_app.config["STAFF_PASSWORD"]:
+        if check_password_hash(current_app.config["STAFF_PASSWORD_HASH"], password):
             session[STAFF_SESSION_KEY] = True
             destination = _sanitize_next_url(request.form.get("next", ""))
             if not _is_safe_next_url(destination):

@@ -19,7 +19,7 @@
             <label>
                 Email
                 <div class="email-field">
-                    <input id="user_email_local" name="user_email_local" value="{{ form.user_email_local }}" required maxlength="120" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" enterkeyhint="next">
+                    <input id="user_email_local" name="user_email_local" value="{{ form.user_email_local }}" required maxlength="120" pattern="[^@]+" title="Enter your Unity ID only, without @ncsu.edu" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" enterkeyhint="next">
                     <span>@{{ ncsu_domain }}</span>
                 </div>
             </label>
@@ -135,6 +135,17 @@
         });
 
         sync();
+
+        const emailLocal = document.getElementById("user_email_local");
+        const validateEmail = () => {
+            if (emailLocal.value.includes("@")) {
+                emailLocal.setCustomValidity("Enter your Unity ID only, without @ncsu.edu");
+            } else {
+                emailLocal.setCustomValidity("");
+            }
+        };
+        emailLocal.addEventListener("input", validateEmail);
+        validateEmail();
     })();
 </script>
 {% endblock %}

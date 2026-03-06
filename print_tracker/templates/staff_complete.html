@@ -40,6 +40,7 @@
         </div>
     {% else %}
         <form method="post" class="stacked-form" id="completionForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <fieldset class="status-options">
                 <legend>Completion status</legend>
                 <label class="option-pill">
@@ -92,6 +93,7 @@
 
     <div class="inline-actions">
         <form method="post" action="{{ url_for('staff.reprint', label_code=job.label_code) }}" class="inline-action">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="button-link">Reprint Label</button>
         </form>
         <a class="button-link" href="{{ url_for('staff.dashboard') }}">Back to Dashboard</a>

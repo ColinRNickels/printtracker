@@ -4,10 +4,12 @@
     <h2>Staff Dashboard</h2>
     <p>Scan a QR code to open a print record instantly, then mark it Finished or Failed.</p>
     <form method="post" action="{{ url_for('staff.logout') }}" class="inline-action">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="button-link">Lock Staff Page</button>
     </form>
 
     <form method="post" action="{{ url_for('staff.scan') }}" class="scan-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label>
             Scan QR / enter Print ID
             <input id="scanValue" name="scan_value" autofocus placeholder="Scan value or code">
@@ -20,6 +22,7 @@
     <h3>Operational Settings</h3>
     <p>These settings apply immediately to this kiosk.</p>
     <form method="post" action="{{ url_for('staff.update_settings') }}" class="kiosk-compact-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label class="checkbox-row">
             <input type="checkbox" name="completion_email_enabled" {% if operational_settings.completion_email_enabled %}checked{% endif %}>
             Send completion emails
@@ -76,6 +79,7 @@
                         <div class="inline-actions">
                             <a href="{{ url_for('staff.complete_job', label_code=job.label_code) }}">Open</a>
                             <form method="post" action="{{ url_for('staff.reprint', label_code=job.label_code) }}" class="inline-action">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="button-link">Reprint</button>
                             </form>
                         </div>
@@ -113,6 +117,7 @@
                     <td>{{ job.completed_at.strftime('%Y-%m-%d %H:%M') if job.completed_at else '' }}</td>
                     <td>
                         <form method="post" action="{{ url_for('staff.reprint', label_code=job.label_code) }}" class="inline-action">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="button-link">Reprint</button>
                         </form>
                     </td>

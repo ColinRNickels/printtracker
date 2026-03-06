@@ -2,7 +2,7 @@ import csv
 from datetime import date, datetime, time
 from io import StringIO
 
-from flask import Blueprint, Response, render_template, request
+from flask import Blueprint, Response, redirect, render_template, request, session, url_for
 
 from ..models import JOB_CATEGORY_LABELS, JOB_CATEGORIES, JOB_STATUS_LABELS, PrintJob
 from ..services.reports import (
@@ -13,6 +13,15 @@ from ..services.reports import (
 )
 
 bp = Blueprint("reports", __name__, url_prefix="/reports")
+
+STAFF_SESSION_KEY = "staff_authenticated"
+
+
+@bp.before_request
+def require_staff_auth():
+    if session.get(STAFF_SESSION_KEY):
+        return None
+    return redirect(url_for("staff.login", next=request.full_path.rstrip("?")))
 
 
 def _month_window(month_value: str | None) -> tuple[datetime, datetime]:

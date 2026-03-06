@@ -5,7 +5,7 @@ from flask import Flask, redirect, url_for
 from sqlalchemy import event, inspect, text
 from sqlalchemy.engine import Engine, make_url
 
-from .extensions import db
+from .extensions import csrf, db, limiter
 
 
 @event.listens_for(Engine, "connect")
@@ -103,6 +103,8 @@ def create_app() -> Flask:
     Path(app.config["LABEL_OUTPUT_DIR"]).mkdir(parents=True, exist_ok=True)
 
     db.init_app(app)
+    csrf.init_app(app)
+    limiter.init_app(app)
 
     from . import models  # noqa: F401
     from .routes.kiosk import bp as kiosk_bp
@@ -115,6 +117,7 @@ def create_app() -> Flask:
         _apply_schema_upgrades()
 
     app.register_blueprint(kiosk_bp)
+    csrf.exempt(kiosk_bp)  # public kiosk form; phones idle on the page
     app.register_blueprint(staff_bp)
     app.register_blueprint(reports_bp)
 
