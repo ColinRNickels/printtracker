@@ -107,22 +107,28 @@ def create_app() -> Flask:
     limiter.init_app(app)
 
     from . import models  # noqa: F401
-    from .routes.kiosk import bp as kiosk_bp
+    from .routes.patron import bp as patron_bp
     from .routes.reports import bp as reports_bp
     from .routes.staff import bp as staff_bp
 
-    # Ensure first-run kiosk instances don't fail on missing tables.
+    # Ensure first-run instances don't fail on missing tables.
     with app.app_context():
         db.create_all()
         _apply_schema_upgrades()
 
-    app.register_blueprint(kiosk_bp)
+    app.register_blueprint(patron_bp)
     app.register_blueprint(staff_bp)
     app.register_blueprint(reports_bp)
 
     @app.route("/")
     def index():
-        return redirect(url_for("kiosk.register"))
+        return redirect(url_for("patron.register"))
+
+    # Backward-compat: redirect old /kiosk/* URLs to /patron/*
+    @app.route("/kiosk/")
+    @app.route("/kiosk/<path:rest>")
+    def legacy_kiosk_redirect(rest=""):
+        return redirect(f"/patron/{rest}", code=301)
 
     @app.cli.command("init-db")
     def init_db_command():

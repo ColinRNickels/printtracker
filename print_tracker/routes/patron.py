@@ -27,7 +27,7 @@ from ..services.qr_links import build_staff_completion_url
 from ..services.runtime_settings import get_operational_settings
 from ..services.sheets_sync import sync_job_to_google_sheet
 
-bp = Blueprint("kiosk", __name__, url_prefix="/kiosk")
+bp = Blueprint("patron", __name__, url_prefix="/patron")
 NCSU_EMAIL_DOMAIN = "ncsu.edu"
 CATEGORY_OPTIONS = [
     (JOB_CATEGORY_PERSONAL, "Personal"),
@@ -149,7 +149,7 @@ def register():
             for error in errors:
                 flash(error, "error")
             return render_template(
-                "kiosk_register.html",
+                "patron_register.html",
                 form=form,
                 category_options=CATEGORY_OPTIONS,
                 ncsu_domain=NCSU_EMAIL_DOMAIN,
@@ -185,14 +185,14 @@ def register():
         label_result = create_and_print_label(**build_label_kwargs(job))
 
         return render_template(
-            "kiosk_success.html",
+            "patron_success.html",
             job=job,
             label_result=label_result,
             sync_error=sync_error if not sync_ok else None,
         )
 
     return render_template(
-        "kiosk_register.html",
+        "patron_register.html",
         form=form,
         category_options=CATEGORY_OPTIONS,
         ncsu_domain=NCSU_EMAIL_DOMAIN,

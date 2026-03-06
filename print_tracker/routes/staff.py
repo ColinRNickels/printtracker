@@ -20,7 +20,7 @@ from ..models import (
     JOB_STATUS_IN_PROGRESS,
     PrintJob,
 )
-from ..routes.kiosk import build_label_kwargs
+from ..routes.patron import build_label_kwargs
 from ..services.label_printer import cleanup_saved_labels, create_and_print_label
 from ..services.notifier import send_completion_email
 from ..services.runtime_settings import (
@@ -107,13 +107,13 @@ def login():
         flash("Incorrect staff password.", "error")
         next_url = _sanitize_next_url(request.form.get("next", next_url))
 
-    auto_return_to_kiosk = not (
+    auto_return_to_register = not (
         next_url.startswith("/staff/s/") or next_url.startswith("/staff/complete/")
     )
     return render_template(
         "staff_login.html",
         next_url=next_url if _is_safe_next_url(next_url) else "",
-        auto_return_to_kiosk=auto_return_to_kiosk,
+        auto_return_to_register=auto_return_to_register,
     )
 
 
@@ -155,6 +155,9 @@ def dashboard():
         .limit(25)
         .all()
     )
+    site_id = (current_app.config.get("SITE_ID", "") or "").strip().upper()
+    label_prefix = site_id if site_id else "PT"
+
     return render_template(
         "staff_dashboard.html",
         in_progress=in_progress,
@@ -163,6 +166,7 @@ def dashboard():
         email_provider=current_app.config.get("EMAIL_PROVIDER", "smtp"),
         kiosk_base_url=kiosk_base_url,
         qr_link_url_warning=qr_link_url_warning,
+        label_prefix=label_prefix,
     )
 
 

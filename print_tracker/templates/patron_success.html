@@ -8,7 +8,7 @@
     <p class="muted-line">Print ID: {{ job.label_code }} &middot; {{ job.file_name }}</p>
 
     <div class="form-actions success-cta">
-        <a class="button-primary-link" href="{{ url_for('kiosk.register') }}">
+        <a class="button-primary-link" href="{{ url_for('patron.register') }}">
             Register Another Print <span id="successCountdown"></span>
         </a>
     </div>
@@ -16,7 +16,7 @@
 
 <script>
     (() => {
-        const targetUrl = "{{ url_for('kiosk.register') }}";
+        const targetUrl = "{{ url_for('patron.register') }}";
         const countdownEl = document.getElementById("successCountdown");
         let seconds = 10;
         const tick = () => {

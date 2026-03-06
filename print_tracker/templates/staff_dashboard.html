@@ -25,7 +25,7 @@
         <span class="toggle-icon" aria-hidden="true">&#9660;</span>
     </h3>
     <div class="collapsible-body" id="settingsBody">
-    <p>These settings apply immediately to this kiosk.</p>
+    <p>These settings apply immediately to this station.</p>
     <form method="post" action="{{ url_for('staff.update_settings') }}" class="kiosk-compact-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label class="checkbox-row">
@@ -63,76 +63,54 @@
 
 <section class="panel">
     <h3>In Progress</h3>
-    <div class="table-wrap">
-    <table>
-        <thead>
-            <tr>
-                <th>Print ID</th>
-                <th>File</th>
-                <th>User</th>
-                <th>Started</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for job in in_progress %}
-                <tr>
-                    <td>{{ job.label_code }}</td>
-                    <td>{{ job.file_name }}</td>
-                    <td>{{ job.user_name }}</td>
-                    <td>{{ job.created_at.strftime('%Y-%m-%d %H:%M') }} <abbr class="tz-label">local</abbr></td>
-                    <td>
-                        <div class="inline-actions">
-                            <a class="button-link" href="{{ url_for('staff.complete_job', label_code=job.label_code) }}">Open</a>
-                            <form method="post" action="{{ url_for('staff.reprint', label_code=job.label_code) }}" class="inline-action">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="button-link button-link-reprint">Reprint</button>
-                            </form>
-                        </div>
-                    </td>
-                </tr>
-            {% else %}
-                <tr><td colspan="5">No active prints.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="job-cards">
+        {% for job in in_progress %}
+        <div class="job-card">
+            <div class="job-card-header">
+                <strong>{{ job.label_code }}</strong>
+                <span class="job-card-time">{{ job.created_at.strftime('%m/%d %H:%M') }}</span>
+            </div>
+            <div class="job-card-body">
+                <span class="job-card-file">{{ job.file_name }}</span>
+                <span class="job-card-user">{{ job.user_name }}</span>
+            </div>
+            <div class="job-card-actions">
+                <a class="button-link" href="{{ url_for('staff.complete_job', label_code=job.label_code) }}">Open</a>
+                <form method="post" action="{{ url_for('staff.reprint', label_code=job.label_code) }}" class="inline-action">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="button-link button-link-reprint">Reprint</button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <p class="muted-line">No active prints.</p>
+        {% endfor %}
     </div>
 </section>
 
 <section class="panel">
     <h3>Recently Completed</h3>
-    <div class="table-wrap">
-    <table>
-        <thead>
-            <tr>
-                <th>Print ID</th>
-                <th>File</th>
-                <th>Status</th>
-                <th>Completed By</th>
-                <th>Completed At</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for job in recently_completed %}
-                <tr>
-                    <td>{{ job.label_code }}</td>
-                    <td>{{ job.file_name }}</td>
-                    <td><span class="status-{{ job.status }}">{{ job.status_label }}</span></td>
-                    <td>{{ job.completed_by }}</td>
-                    <td>{{ job.completed_at.strftime('%Y-%m-%d %H:%M') if job.completed_at else '' }}{% if job.completed_at %} <abbr class="tz-label">local</abbr>{% endif %}</td>
-                    <td>
-                        <form method="post" action="{{ url_for('staff.reprint', label_code=job.label_code) }}" class="inline-action">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="button-link button-link-reprint">Reprint</button>
-                        </form>
-                    </td>
-                </tr>
-            {% else %}
-                <tr><td colspan="6">No completed jobs yet.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="job-cards">
+        {% for job in recently_completed %}
+        <div class="job-card">
+            <div class="job-card-header">
+                <strong>{{ job.label_code }}</strong>
+                <span class="status-{{ job.status }}">{{ job.status_label }}</span>
+            </div>
+            <div class="job-card-body">
+                <span class="job-card-file">{{ job.file_name }}</span>
+                <span class="job-card-meta">{{ job.completed_by }} &middot; {{ job.completed_at.strftime('%m/%d %H:%M') if job.completed_at else '' }}</span>
+            </div>
+            <div class="job-card-actions">
+                <form method="post" action="{{ url_for('staff.reprint', label_code=job.label_code) }}" class="inline-action">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="button-link button-link-reprint">Reprint</button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <p class="muted-line">No completed jobs yet.</p>
+        {% endfor %}
     </div>
 </section>
 
@@ -167,9 +145,11 @@
                 if (!value) {
                     return;
                 }
-                const looksLikeLegacyId = /^PT-[A-F0-9]{8}$/i.test(value);
-                const looksLikeTimestampId = /^PT-\d{8}-\d{6}-\d{2}$/i.test(value);
-                const looksLikeUrl = /\/staff\/(?:complete|s)\/PT-/i.test(value);
+                const prefix = "{{ label_prefix }}";
+                const pfx = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                const looksLikeLegacyId = new RegExp("^" + pfx + "-[A-F0-9]{8}$", "i").test(value);
+                const looksLikeTimestampId = new RegExp("^" + pfx + "-\\d{8}-\\d{6}-\\d{2}$", "i").test(value);
+                const looksLikeUrl = new RegExp("\\/staff\\/(?:complete|s)\\/" + pfx + "-", "i").test(value);
                 if ((looksLikeLegacyId || looksLikeTimestampId || looksLikeUrl) && !value.includes(" ")) {
                     submitTimer = setTimeout(() => scanInput.form.requestSubmit(), 400);
                 }
