@@ -7,4 +7,3 @@ from flask_wtf import CSRFProtect
 db = SQLAlchemy()
 csrf = CSRFProtect()
 limiter = Limiter(key_func=get_remote_address, default_limits=[])
-

@@ -2,7 +2,15 @@ import csv
 from datetime import date, datetime, time
 from io import StringIO
 
-from flask import Blueprint, Response, redirect, render_template, request, session, url_for
+from flask import (
+    Blueprint,
+    Response,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 
 from ..models import JOB_CATEGORY_LABELS, JOB_CATEGORIES, JOB_STATUS_LABELS, PrintJob
 from ..services.reports import (
@@ -47,7 +55,9 @@ def monthly():
     month_start, month_end = _month_window(month_value)
 
     jobs = (
-        PrintJob.query.filter(PrintJob.created_at >= month_start, PrintJob.created_at < month_end)
+        PrintJob.query.filter(
+            PrintJob.created_at >= month_start, PrintJob.created_at < month_end
+        )
         .order_by(PrintJob.created_at.desc())
         .all()
     )
@@ -55,7 +65,9 @@ def monthly():
     trend_start_date = shift_month(month_start.date(), -11)
     trend_start = datetime.combine(trend_start_date, time.min)
     trend_jobs = (
-        PrintJob.query.filter(PrintJob.created_at >= trend_start, PrintJob.created_at < month_end)
+        PrintJob.query.filter(
+            PrintJob.created_at >= trend_start, PrintJob.created_at < month_end
+        )
         .order_by(PrintJob.created_at.asc())
         .all()
     )
@@ -67,8 +79,14 @@ def monthly():
             months=12,
         ),
         "project_type": {
-            "labels": [JOB_CATEGORY_LABELS.get(category, category) for category in JOB_CATEGORIES],
-            "values": [summary["category_counts"].get(category, 0) for category in JOB_CATEGORIES],
+            "labels": [
+                JOB_CATEGORY_LABELS.get(category, category)
+                for category in JOB_CATEGORIES
+            ],
+            "values": [
+                summary["category_counts"].get(category, 0)
+                for category in JOB_CATEGORIES
+            ],
         },
         "department": build_department_chart(jobs),
         "status": {
@@ -102,7 +120,9 @@ def monthly_csv():
     month_start, month_end = _month_window(month_value)
 
     jobs = (
-        PrintJob.query.filter(PrintJob.created_at >= month_start, PrintJob.created_at < month_end)
+        PrintJob.query.filter(
+            PrintJob.created_at >= month_start, PrintJob.created_at < month_end
+        )
         .order_by(PrintJob.created_at.asc())
         .all()
     )
