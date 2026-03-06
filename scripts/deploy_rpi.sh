@@ -29,6 +29,9 @@ GOOGLE_GMAIL_SENDER="library_makerspace@ncsu.edu"
 GOOGLE_SPREADSHEET_ID="1H0y3uRWZIUOXlwIJcKXujPLFAVzN3LjpZ9ACoJ2LNck"
 GOOGLE_WORKSHEET="PrintJobs"
 SETUP_TUNNEL=-1
+SETUP_GOLINK=-1
+GO_NCSU_API_TOKEN=""
+GO_NCSU_LINK_SLUG=""
 
 # ── Colours & symbols ─────────────────────────────────────────────────────
 # Gracefully degrade to plain text if terminal doesn't support colours.
@@ -54,7 +57,7 @@ else
   SYM_WARN="[!]" SYM_GEAR="[*]"
 fi
 
-TOTAL_STEPS=7   # may be adjusted when Google / Tunnel are decided
+TOTAL_STEPS=8   # may be adjusted when Google / Tunnel are decided
 CURRENT_STEP=0
 
 # ── TUI drawing helpers ───────────────────────────────────────────────────
@@ -158,6 +161,11 @@ Options:
   --google-worksheet NAME  Worksheet tab name (default: PrintJobs).
   --setup-tunnel           Set up a Cloudflare quick tunnel (free, no domain needed).
   --no-tunnel              Skip Cloudflare Tunnel setup.
+  --setup-golink           Create a go.ncsu.edu short link during deploy.
+  --no-golink              Skip go.ncsu.edu short link setup.
+  --go-ncsu-api-token TOKEN
+                           API token for go.ncsu.edu.
+  --go-ncsu-link-slug SLUG Short-link slug (e.g. makerspace-print).
   --site-id ID             Short site prefix for Print IDs (e.g. HL, PT).
   --location-name NAME     Human-readable location name (e.g. "Hill Library").
   --logo-source PATH       Optional local PNG path for label logo.
@@ -320,6 +328,10 @@ while [[ $# -gt 0 ]]; do
     --google-worksheet)      GOOGLE_WORKSHEET="$2";           shift 2 ;;
     --setup-tunnel)          SETUP_TUNNEL=1;                  shift ;;
     --no-tunnel)             SETUP_TUNNEL=0;                  shift ;;
+    --setup-golink)          SETUP_GOLINK=1;                  shift ;;
+    --no-golink)             SETUP_GOLINK=0;                  shift ;;
+    --go-ncsu-api-token)     GO_NCSU_API_TOKEN="$2";          shift 2 ;;
+    --go-ncsu-link-slug)     GO_NCSU_LINK_SLUG="$2";          shift 2 ;;
     --site-id)               SITE_ID="$2";                    shift 2 ;;
     --location-name)         LOCATION_NAME="$2";              shift 2 ;;
     --logo-source)           LOGO_SOURCE="$2";                shift 2 ;;
@@ -529,7 +541,74 @@ LOGO
   fi
 
   # ╭───────────────────────────────────────────────────────────────────────╮
-  # │  Step 6 — Google Integration                                          │
+  # │  Step 6 — go.ncsu.edu Short Link                                     │
+  # ╰───────────────────────────────────────────────────────────────────────╯
+  tui_step_header "go.ncsu.edu Short Link"
+
+  tui_explain "Print Tracker can create a permanent short link at go.ncsu.edu"
+  tui_explain "that redirects to your kiosk. For example:"
+  printf '\n'
+  tui_explain "    go.ncsu.edu/makerspace-print  →  https://<your-tunnel-url>"
+  printf '\n'
+  tui_explain "This is useful for printed signs, label QR codes, or sharing"
+  tui_explain "with users. The link stays the same even if the tunnel URL changes."
+  printf '\n'
+  tui_explain "You need a go.ncsu.edu API token to do this."
+  printf '\n'
+  tui_hint "How to get a token:"
+  tui_explain "  1. Go to https://go.ncsu.edu/api/help"
+  tui_explain "  2. Enter a token name (e.g. 'print-tracker')"
+  tui_explain "  3. Click 'Create Token'"
+  tui_explain "  4. Copy the token ID — you only see it once!"
+  tui_explain "  5. Paste it here when prompted"
+  printf '\n'
+  tui_hint "If you don't have a token yet, say NO — you can set this up later."
+
+  if [[ "${SETUP_GOLINK}" -lt 0 ]]; then
+    if prompt_yes_no "Create a go.ncsu.edu short link" "y"; then
+      SETUP_GOLINK=1
+      printf '\n'
+
+      # -- API token --
+      tui_rule '·'
+      if [[ -z "${GO_NCSU_API_TOKEN}" ]]; then
+        tui_explain "  Paste your go.ncsu.edu API token."
+        tui_explain "  (Get one at https://go.ncsu.edu/api/help)"
+        GO_NCSU_API_TOKEN="$(prompt_default "go.ncsu.edu API token" "")"
+        printf '\n'
+      else
+        tui_success "API token was provided via command-line flag."
+      fi
+
+      if [[ -z "${GO_NCSU_API_TOKEN}" ]]; then
+        tui_warn "No token provided — skipping golink setup."
+        SETUP_GOLINK=0
+      else
+        # -- Link slug --
+        tui_rule '·'
+        tui_explain "  Choose a short-link slug. This is the part after go.ncsu.edu/"
+        tui_explain "  For example, entering 'makerspace-print' would create:"
+        tui_explain "    go.ncsu.edu/makerspace-print"
+        printf '\n'
+        tui_explain "  Use lowercase letters, numbers, and hyphens."
+        tui_explain "  If the name is already taken, you'll be able to try another."
+        if [[ -z "${GO_NCSU_LINK_SLUG}" ]]; then
+          GO_NCSU_LINK_SLUG="$(prompt_default "Short link slug" "makerspace-print-label")"
+        else
+          tui_success "Link slug provided via command-line flag: ${GO_NCSU_LINK_SLUG}"
+        fi
+        printf '\n'
+        tui_success "GoLink will be created during installation."
+      fi
+    else
+      SETUP_GOLINK=0
+      printf '\n'
+      tui_success "Skipping go.ncsu.edu short link."
+    fi
+  fi
+
+  # ╭───────────────────────────────────────────────────────────────────────╮
+  # │  Step 7 — Google Integration                                          │
   # ╰───────────────────────────────────────────────────────────────────────╯
   tui_step_header "Google Integration (Gmail & Sheets)"
 
@@ -623,7 +702,7 @@ LOGO
   fi
 
   # ╭───────────────────────────────────────────────────────────────────────╮
-  # │  Step 7 — Review                                                      │
+  # │  Step 8 — Review                                                      │
   # ╰───────────────────────────────────────────────────────────────────────╯
   tui_step_header "Review Your Settings"
 
@@ -646,6 +725,11 @@ LOGO
     tui_field "Cloudflare tunnel" "Yes"
   else
     tui_field "Cloudflare tunnel" "No"
+  fi
+  if [[ "${SETUP_GOLINK}" -eq 1 ]]; then
+    tui_field "go.ncsu.edu link" "go.ncsu.edu/${GO_NCSU_LINK_SLUG}"
+  else
+    tui_field "go.ncsu.edu link" "No (can configure later)"
   fi
   if [[ "${SETUP_GOOGLE_OAUTH}" -eq 1 ]]; then
     tui_field "Google integration" "Yes"
@@ -825,9 +909,17 @@ set_env_value "${ENV_FILE}" "DEFAULT_PRINTER_NAME" "${LOCATION_NAME}"
 [[ -n "${SITE_ID}" ]] && set_env_value "${ENV_FILE}" "SITE_ID" "${SITE_ID}"
 
 EXISTING_GO_TOKEN="$(get_env_value "${ENV_FILE}" "GO_NCSU_API_TOKEN")"
-[[ -z "${EXISTING_GO_TOKEN}" ]] && set_env_value "${ENV_FILE}" "GO_NCSU_API_TOKEN" ""
-EXISTING_GO_SLUG="$(get_env_value "${ENV_FILE}" "GO_NCSU_LINK_SLUG")"
-[[ -z "${EXISTING_GO_SLUG}" ]] && set_env_value "${ENV_FILE}" "GO_NCSU_LINK_SLUG" "makerspace-print-label"
+if [[ -n "${GO_NCSU_API_TOKEN}" ]]; then
+  set_env_value "${ENV_FILE}" "GO_NCSU_API_TOKEN" "${GO_NCSU_API_TOKEN}"
+elif [[ -z "${EXISTING_GO_TOKEN}" ]]; then
+  set_env_value "${ENV_FILE}" "GO_NCSU_API_TOKEN" ""
+fi
+if [[ -n "${GO_NCSU_LINK_SLUG}" ]]; then
+  set_env_value "${ENV_FILE}" "GO_NCSU_LINK_SLUG" "${GO_NCSU_LINK_SLUG}"
+else
+  EXISTING_GO_SLUG="$(get_env_value "${ENV_FILE}" "GO_NCSU_LINK_SLUG")"
+  [[ -z "${EXISTING_GO_SLUG}" ]] && set_env_value "${ENV_FILE}" "GO_NCSU_LINK_SLUG" ""
+fi
 
 set_env_value "${ENV_FILE}" "STAFF_PASSWORD" "${STAFF_PASSWORD}"
 tui_success "Configuration written to ${ENV_FILE}"
@@ -924,7 +1016,76 @@ CFDEOF
   fi
 fi
 
-# ── 10. systemd service ──────────────────────────────────────────────────
+# ── 10. go.ncsu.edu short link ───────────────────────────────────────────
+GOLINK_CONFIGURED=0
+[[ "${SETUP_GOLINK}" -lt 0 ]] && SETUP_GOLINK=0
+if [[ "${SETUP_GOLINK}" -eq 1 && -n "${GO_NCSU_API_TOKEN}" && -n "${GO_NCSU_LINK_SLUG}" ]]; then
+  # Determine the target URL for the golink
+  GOLINK_TARGET=""
+  if [[ "${TUNNEL_CONFIGURED}" -eq 1 && -n "${TUNNEL_URL:-}" ]]; then
+    GOLINK_TARGET="${TUNNEL_URL}"
+  else
+    GOLINK_TARGET="${KIOSK_BASE_URL}"
+  fi
+
+  tui_progress "Creating go.ncsu.edu/${GO_NCSU_LINK_SLUG}"
+
+  # Loop to allow retries if the slug is taken
+  while true; do
+    GO_API_URL="https://go.ncsu.edu/api/v2/links"
+    GOLINK_RESP_FILE="$(mktemp /tmp/golink-create-XXXX.json)"
+    GOLINK_HTTP_CODE="$(curl --silent --location \
+      --output "${GOLINK_RESP_FILE}" --write-out '%{http_code}' \
+      --request POST "${GO_API_URL}" \
+      --header "Authorization: Bearer ${GO_NCSU_API_TOKEN}" \
+      --header "Content-Type: application/json" \
+      --header "Accept: application/json" \
+      --data "{
+        \"slug\": \"${GO_NCSU_LINK_SLUG}\",
+        \"target_url\": \"${GOLINK_TARGET}\",
+        \"enabled\": true,
+        \"exclude_from_status_check\": true
+      }")" || true
+    GOLINK_RESP_BODY="$(cat "${GOLINK_RESP_FILE}" 2>/dev/null)"
+    rm -f "${GOLINK_RESP_FILE}"
+
+    if [[ "${GOLINK_HTTP_CODE}" =~ ^2[0-9][0-9]$ ]]; then
+      set_env_value "${ENV_FILE}" "GO_NCSU_LINK_SLUG" "${GO_NCSU_LINK_SLUG}"
+      GOLINK_CONFIGURED=1
+      tui_success "Created go.ncsu.edu/${GO_NCSU_LINK_SLUG} → ${GOLINK_TARGET}"
+      break
+    elif [[ "${GOLINK_HTTP_CODE}" == "409" || "${GOLINK_RESP_BODY}" == *"already"* || "${GOLINK_RESP_BODY}" == *"taken"* || "${GOLINK_RESP_BODY}" == *"exists"* || "${GOLINK_RESP_BODY}" == *"conflict"* ]]; then
+      tui_warn "The slug '${GO_NCSU_LINK_SLUG}' is already taken on go.ncsu.edu."
+      if [[ "${NON_INTERACTIVE}" -eq 1 ]]; then
+        tui_warn "Non-interactive mode — cannot retry. Skipping golink creation."
+        break
+      fi
+      if prompt_yes_no "Try a different slug name" "y"; then
+        GO_NCSU_LINK_SLUG="$(prompt_default "Short link slug" "")"
+        printf '\n'
+        if [[ -z "${GO_NCSU_LINK_SLUG}" ]]; then
+          tui_warn "No slug provided — skipping golink creation."
+          break
+        fi
+        tui_progress "Trying go.ncsu.edu/${GO_NCSU_LINK_SLUG}"
+      else
+        tui_warn "Skipping golink creation."
+        break
+      fi
+    else
+      tui_fail "Failed to create golink (HTTP ${GOLINK_HTTP_CODE})."
+      if [[ -n "${GOLINK_RESP_BODY}" ]]; then
+        tui_explain "  API response: ${GOLINK_RESP_BODY}"
+      fi
+      tui_warn "You can create the link manually later or re-run the deploy script."
+      break
+    fi
+  done
+elif [[ "${SETUP_GOLINK}" -eq 1 ]]; then
+  tui_warn "GoLink setup requested but token or slug is missing — skipping."
+fi
+
+# ── 11. systemd service ──────────────────────────────────────────────────
 if [[ "${SKIP_SERVICE}" -eq 0 ]]; then
   tui_progress "Creating systemd service (${SERVICE_NAME})"
   run_root tee "/etc/systemd/system/${SERVICE_NAME}.service" >/dev/null <<EOF
@@ -965,6 +1126,9 @@ printf '  %b%s Your app is live!%b\n\n' "${C_GREEN}" "${SYM_CHECK}" "${C_RESET}"
 printf '     Local URL:   %bhttp://%s:%s/kiosk/register%b\n' "${C_BOLD}" "${HOST_IP}" "${PORT}" "${C_RESET}"
 if [[ "${TUNNEL_CONFIGURED}" -eq 1 && -n "${TUNNEL_URL:-}" ]]; then
   printf '     Public URL:  %b%s%b\n' "${C_BOLD}" "${TUNNEL_URL}" "${C_RESET}"
+fi
+if [[ "${GOLINK_CONFIGURED}" -eq 1 ]]; then
+  printf '     Short link:  %bgo.ncsu.edu/%s%b\n' "${C_BOLD}" "${GO_NCSU_LINK_SLUG}" "${C_RESET}"
 fi
 printf '\n'
 
@@ -1025,6 +1189,30 @@ elif [[ "${GOOGLE_OAUTH_CONFIGURED}" -eq 1 ]]; then
   printf '\n'
 fi
 
+# ── GoLink info ───────────────────────────────────────────────────────────
+if [[ "${GOLINK_CONFIGURED}" -eq 1 ]]; then
+  tui_rule '─'
+  printf '\n  %bgo.ncsu.edu Short Link%b\n\n' "${C_BOLD}" "${C_RESET}"
+  printf '  Short URL: %bgo.ncsu.edu/%s%b\n\n' "${C_BOLD}" "${GO_NCSU_LINK_SLUG}" "${C_RESET}"
+  tui_explain "  The tunnel URL changes when the tunnel restarts, but the go.ncsu.edu"
+  tui_explain "  short link is updated automatically by the tunnel startup script."
+  printf '\n'
+elif [[ "${SETUP_GOLINK}" -ne 1 ]]; then
+  tui_rule '─'
+  printf '\n  %bgo.ncsu.edu Short Link (not set up yet)%b\n\n' "${C_BOLD}" "${C_RESET}"
+  tui_explain "  To create a permanent short link later:"
+  printf '\n'
+  printf '  %b 1 %b  Get an API token at https://go.ncsu.edu/api/help\n' "${C_BG_CYAN}${C_WHITE}" "${C_RESET}"
+  tui_explain "       Enter a token name, click Create Token, and copy the ID."
+  tui_explain "       You only see the token once!"
+  printf '\n'
+  printf '  %b 2 %b  Add to .env:\n' "${C_BG_CYAN}${C_WHITE}" "${C_RESET}"
+  printf '       GO_NCSU_API_TOKEN=<your-token>\n'
+  printf '       GO_NCSU_LINK_SLUG=<your-link-name>\n\n'
+  printf '  %b 3 %b  Run the update script:\n' "${C_BG_CYAN}${C_WHITE}" "${C_RESET}"
+  printf '       %s/scripts/update_golink.sh\n\n' "${APP_DIR}"
+fi
+
 # ── Cheat sheet ───────────────────────────────────────────────────────────
 tui_rule '─'
 printf '\n  %bHandy Commands Cheat Sheet:%b\n\n' "${C_BOLD}" "${C_RESET}"
@@ -1036,6 +1224,9 @@ printf '  %b%-35s%b %s\n' "${C_DIM}" "Edit configuration" "${C_RESET}" "nano ${E
 if [[ "${TUNNEL_CONFIGURED}" -eq 1 ]]; then
   printf '  %b%-35s%b %s\n' "${C_DIM}" "View tunnel logs" "${C_RESET}" "sudo journalctl -u cloudflared-quick -f"
   printf '  %b%-35s%b %s\n' "${C_DIM}" "Restart tunnel" "${C_RESET}" "sudo systemctl restart cloudflared-quick"
+fi
+if [[ "${GOLINK_CONFIGURED}" -eq 1 ]]; then
+  printf '  %b%-35s%b %s\n' "${C_DIM}" "Update golink URL" "${C_RESET}" "${APP_DIR}/scripts/update_golink.sh"
 fi
 printf '  %b%-35s%b %s\n' "${C_DIM}" "List CUPS printers" "${C_RESET}" "lpstat -e"
 printf '  %b%-35s%b %s\n' "${C_DIM}" "CUPS web admin" "${C_RESET}" "http://localhost:631"
