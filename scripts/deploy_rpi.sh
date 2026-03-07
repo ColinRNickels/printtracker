@@ -455,7 +455,7 @@ LOGO
   tui_hint "Print mode — how labels are handled:"
   printf '\n'
   tui_explain "    cups   Send labels to a real Brother QL printer via USB."
-  tui_explain "           Choose this for a production kiosk."
+  tui_explain "           Choose this for a production station."
   printf '\n'
   tui_explain "    mock   Don't print anything. Labels are saved as images in"
   tui_explain "           the labels/ folder. Good for testing without a printer."
@@ -511,7 +511,7 @@ LOGO
   # ╰───────────────────────────────────────────────────────────────────────╯
   tui_step_header "Internet Access (Cloudflare Tunnel)"
 
-  tui_explain "Right now the kiosk is reachable only on the local network at:"
+  tui_explain "Right now the app is reachable only on the local network at:"
   tui_explain "  http://<this Pi's IP address>:${PORT}"
   printf '\n'
   tui_explain "A Cloudflare tunnel makes it accessible from the public internet"
@@ -522,7 +522,7 @@ LOGO
   tui_hint "No router or firewall changes needed."
   tui_hint "The URL changes when the tunnel restarts, but the app can update it."
   printf '\n'
-  tui_explain "When to say YES:  staff or users need to access the kiosk from"
+  tui_explain "When to say YES:  staff or users need to access the app from"
   tui_explain "                  campus Wi-Fi, remotely, or outside your LAN."
   tui_explain "When to say NO:   the Pi and all users are on the same network."
   printf '\n'
@@ -546,7 +546,7 @@ LOGO
   tui_step_header "go.ncsu.edu Short Link"
 
   tui_explain "Print Tracker can create a permanent short link at go.ncsu.edu"
-  tui_explain "that redirects to your kiosk. For example:"
+  tui_explain "that redirects to your app. For example:"
   printf '\n'
   tui_explain "    go.ncsu.edu/makerspace-print  →  https://<your-tunnel-url>"
   printf '\n'
@@ -621,7 +621,7 @@ LOGO
   printf '\n'
   tui_hint "Google Sheets sync"
   tui_explain "  Every print job is automatically logged to a Google Spreadsheet."
-  tui_explain "  Useful for shared record-keeping when multiple kiosks are running."
+  tui_explain "  Useful for shared record-keeping when multiple stations are running."
   printf '\n'
   tui_explain "Both features require an OAuth credential file from Google Cloud."
   tui_explain "Someone on your team should have set up a Google Cloud project and"
@@ -1123,7 +1123,7 @@ printf '\n'
 
 # ── Live URL ──────────────────────────────────────────────────────────────
 printf '  %b%s Your app is live!%b\n\n' "${C_GREEN}" "${SYM_CHECK}" "${C_RESET}"
-printf '     Local URL:   %bhttp://%s:%s/kiosk/register%b\n' "${C_BOLD}" "${HOST_IP}" "${PORT}" "${C_RESET}"
+printf '     Local URL:   %bhttp://%s:%s/patron/register%b\n' "${C_BOLD}" "${HOST_IP}" "${PORT}" "${C_RESET}"
 if [[ "${TUNNEL_CONFIGURED}" -eq 1 && -n "${TUNNEL_URL:-}" ]]; then
   printf '     Public URL:  %b%s%b\n' "${C_BOLD}" "${TUNNEL_URL}" "${C_RESET}"
 fi
@@ -1136,8 +1136,8 @@ printf '\n'
 tui_rule '─'
 printf '\n  %bWhat to do next:%b\n\n' "${C_BOLD}" "${C_RESET}"
 
-printf '  %b 1 %b  Open the kiosk in a browser and submit a test print:\n' "${C_BG_CYAN}${C_WHITE}" "${C_RESET}"
-printf '       http://%s:%s/kiosk/register\n\n' "${HOST_IP}" "${PORT}"
+printf '  %b 1 %b  Open the app in a browser and submit a test print:\n' "${C_BG_CYAN}${C_WHITE}" "${C_RESET}"
+printf '       http://%s:%s/patron/register\n\n' "${HOST_IP}" "${PORT}"
 
 if [[ "${PRINT_MODE}" == "cups" ]]; then
   printf '  %b 2 %b  Verify the printer is set up in CUPS:\n' "${C_BG_CYAN}${C_WHITE}" "${C_RESET}"
@@ -1146,9 +1146,9 @@ if [[ "${PRINT_MODE}" == "cups" ]]; then
   printf '  %b 3 %b  Print a CUPS test page:\n' "${C_BG_CYAN}${C_WHITE}" "${C_RESET}"
   printf '       lp -d %s /usr/share/cups/data/testprint\n\n' "${PRINTER_QUEUE}"
 
-  printf '  %b 4 %b  Submit a kiosk print and confirm the label comes out.\n\n' "${C_BG_CYAN}${C_WHITE}" "${C_RESET}"
+  printf '  %b 4 %b  Submit a test print and confirm the label comes out.\n\n' "${C_BG_CYAN}${C_WHITE}" "${C_RESET}"
 else
-  printf '  %b 2 %b  Submit a kiosk print — labels are saved as images in:\n' "${C_BG_CYAN}${C_WHITE}" "${C_RESET}"
+  printf '  %b 2 %b  Submit a test print — labels are saved as images in:\n' "${C_BG_CYAN}${C_WHITE}" "${C_RESET}"
   printf '       %s/\n\n' "${LABEL_DIR}"
 fi
 

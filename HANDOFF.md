@@ -335,7 +335,7 @@ After pulling latest code:
 1. `bash -n scripts/deploy_rpi.sh`
 2. `source .venv/bin/activate && python -m compileall -q print_tracker`
 3. Start app, verify:
-   - kiosk form load
+   - patron registration form loads
    - large text appearance
    - label print path
    - QR scan on phone -> login -> correct print completion page

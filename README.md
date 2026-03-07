@@ -88,7 +88,7 @@ this document.
 
 ## 1) What's Implemented
 
-### Registration form (`/kiosk/register`)
+### Registration form (`/patron/register`)
 
 - Collects: first name, last name, NCSU email, file name, project type
 - Project type options: Personal, Academic, Research
@@ -114,7 +114,6 @@ this document.
 - Mark Finished or Failed (failure notes required)
 - Reprint buttons for in-progress and recent completed jobs
 - Runtime settings: email toggle, label save, retention days, QR mode
-- Login auto-returns to kiosk after 15s (disabled for QR-driven paths)
 
 ### Notifications + cloud
 
@@ -142,7 +141,7 @@ python run.py
 
 Open:
 
-- Kiosk: `http://localhost:5000/kiosk/register`
+- Register: `http://localhost:5000/patron/register`
 - Staff: `http://localhost:5000/staff/`
 - Reports: `http://localhost:5000/reports/monthly`
 
@@ -182,7 +181,7 @@ chmod +x scripts/deploy_rpi.sh
 - systemd service (`print-tracker`)
 - Optional Wi-Fi AP for staff scanning (default ON but not required with
   Cloudflare Tunnel)
-- Optional Chromium kiosk autostart (default ON but not required for
+- Optional Chromium autostart (default ON but not required for
   phone-first workflow)
 - Optional Google OAuth setup
 
@@ -213,7 +212,7 @@ lp -d QL800 /usr/share/cups/data/testprint
 # Development/testing without a printer
 ./scripts/deploy_rpi.sh --print-mode mock
 
-# Skip AP and kiosk browser (phone-first setup)
+# Skip AP and Chromium autostart (phone-first setup)
 ./scripts/deploy_rpi.sh --no-ap --no-kiosk-autostart
 
 # Full Google OAuth setup
@@ -429,7 +428,7 @@ The app creates the worksheet and headers automatically on first sync.
 
 | URL | Purpose |
 |-----|---------|
-| `/kiosk/register` | Patron registration form |
+| `/patron/register` | Patron registration form |
 | `/staff/` | Staff dashboard (password protected) |
 | `/staff/s/<CODE>` | QR scan shortcut → staff completion page |
 | `/staff/complete/<CODE>` | Staff completion form for a specific job |

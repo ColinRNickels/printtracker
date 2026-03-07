@@ -3,11 +3,23 @@
 {% block content %}
 <section class="panel kiosk-compact">
     <h2 class="success-heading">You're All Set</h2>
-    <p class="status-line success">Your label is printing now.</p>
+    {% if label_result and label_result.printed %}
+        <p class="status-line success">Your label is printing now.</p>
+    {% elif label_result and label_result.image_path %}
+        <p class="status-line success">Your print has been registered.</p>
+        <p class="muted-line">Label was saved but not sent to a printer. Ask staff for your label.</p>
+    {% else %}
+        <p class="status-line success">Your print has been registered.</p>
+        <p class="muted-line">No label was printed. Ask staff for next steps.</p>
+    {% endif %}
 
     <ol class="next-steps">
-        <li>Pick up the printed label from the label printer.</li>
-        <li>Place the label next to your print on the printer bed.</li>
+        {% if label_result and label_result.printed %}
+            <li>Pick up the printed label from the label printer.</li>
+            <li>Place the label next to your print on the printer bed.</li>
+        {% else %}
+            <li>Ask staff to help you label your print.</li>
+        {% endif %}
         <li>You'll get an email at <strong>{{ job.user_email }}</strong> when your print is finished or if there's an issue.</li>
     </ol>
 
