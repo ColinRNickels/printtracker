@@ -39,7 +39,7 @@ CATEGORY_OPTIONS = [
 def build_label_kwargs(job) -> dict:
     """Build the keyword arguments for create_and_print_label.
 
-    Shared between kiosk registration and staff reprint to avoid
+    Shared between patron registration and staff reprint to avoid
     duplicating ~15 config/settings lookups.
     """
     operational_settings = get_operational_settings()

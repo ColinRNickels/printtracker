@@ -1005,6 +1005,15 @@ nav a.nav-active {
     color: var(--success);
 }
 
+.next-steps {
+    margin: 0.5rem 0 0.75rem;
+    padding-left: 1.3rem;
+    display: grid;
+    gap: 0.4rem;
+    font-size: 1rem;
+    line-height: 1.45;
+}
+
 /* ================================================================
    Option-pill active state (radio/checkbox selected)
    ================================================================ */

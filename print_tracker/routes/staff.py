@@ -107,13 +107,9 @@ def login():
         flash("Incorrect staff password.", "error")
         next_url = _sanitize_next_url(request.form.get("next", next_url))
 
-    auto_return_to_register = not (
-        next_url.startswith("/staff/s/") or next_url.startswith("/staff/complete/")
-    )
     return render_template(
         "staff_login.html",
         next_url=next_url if _is_safe_next_url(next_url) else "",
-        auto_return_to_register=auto_return_to_register,
     )
 
 

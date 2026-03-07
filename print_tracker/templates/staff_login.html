@@ -4,12 +4,7 @@
 <section class="panel auth-panel">
     <h2>Staff Access</h2>
     <p>Enter the staff password to continue.</p>
-    {% if auto_return_to_register %}
-        <p id="staffLoginTimeoutNotice" class="muted-line">
-            Returning to registration in <strong><span id="staffLoginCountdown">15</span></strong> seconds.
-        </p>
-    {% endif %}
-    <form method="post" class="kiosk-compact-form">
+    <form method="post" class="stacked-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="next" value="{{ next_url }}">
         <label>
@@ -21,82 +16,4 @@
         </div>
     </form>
 </section>
-<script>
-    (() => {
-        const autoReturnEnabled = {{ "true" if auto_return_to_register else "false" }};
-        if (!autoReturnEnabled) {
-            return;
-        }
-        const countdownEl = document.getElementById("staffLoginCountdown");
-        const noticeEl = document.getElementById("staffLoginTimeoutNotice");
-        const form = document.querySelector("section.auth-panel form");
-        const passwordInput = form ? form.querySelector("input[name='password']") : null;
-        const targetUrl = "{{ url_for('patron.register') }}";
-        let seconds = 15;
-        let timer = null;
-
-        const stopTimer = () => {
-            if (timer) {
-                clearTimeout(timer);
-                timer = null;
-            }
-        };
-
-        const startTimer = () => {
-            stopTimer();
-            seconds = 15;
-            if (countdownEl) {
-                countdownEl.textContent = String(seconds);
-            }
-            if (noticeEl) {
-                noticeEl.style.display = "";
-            }
-            timer = setTimeout(tick, 1000);
-        };
-
-        const tick = () => {
-            seconds -= 1;
-            if (countdownEl && seconds >= 0) {
-                countdownEl.textContent = String(seconds);
-            }
-            if (seconds <= 0) {
-                window.location.assign(targetUrl);
-                return;
-            }
-            timer = setTimeout(tick, 1000);
-        };
-
-        if (passwordInput) {
-            passwordInput.addEventListener("input", () => {
-                if (passwordInput.value.trim().length > 0) {
-                    stopTimer();
-                    if (noticeEl) {
-                        noticeEl.style.display = "none";
-                    }
-                } else {
-                    startTimer();
-                }
-            });
-
-            /* Resume timer after a failed login attempt (field still has text but page reloaded) */
-            if (passwordInput.value.trim().length === 0) {
-                startTimer();
-            } else {
-                /* Password field has content from autofill or prior attempt — don't auto-redirect */
-                stopTimer();
-                if (noticeEl) {
-                    noticeEl.style.display = "none";
-                }
-            }
-        } else {
-            startTimer();
-        }
-
-        if (form) {
-            form.addEventListener("submit", () => {
-                stopTimer();
-            });
-        }
-    })();
-</script>
 {% endblock %}

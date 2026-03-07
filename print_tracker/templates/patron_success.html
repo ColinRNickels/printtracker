@@ -5,6 +5,12 @@
     <h2 class="success-heading">You're All Set</h2>
     <p class="status-line success">Your label is printing now.</p>
 
+    <ol class="next-steps">
+        <li>Pick up the printed label from the label printer.</li>
+        <li>Place the label next to your print on the printer bed.</li>
+        <li>You'll get an email at <strong>{{ job.user_email }}</strong> when your print is finished or if there's an issue.</li>
+    </ol>
+
     <p class="muted-line">Print ID: {{ job.label_code }} &middot; {{ job.file_name }}</p>
 
     <div class="form-actions success-cta">

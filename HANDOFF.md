@@ -116,12 +116,13 @@ replaces the per-Pi config. One instance, one URL, one Google Sheet.
 
 | Blueprint | Prefix | File | Purpose |
 |-----------|--------|------|---------|
-| `kiosk` | `/kiosk` | `routes/kiosk.py` | Registration form, QR images, label preview |
+| `patron` | `/patron` | `routes/patron.py` | Registration form, QR images, label preview |
 | `staff` | `/staff` | `routes/staff.py` | Login, dashboard, scan, completion, reprint, settings |
 | `reports` | `/reports` | `routes/reports.py` | Monthly report page + CSV export |
 
 Key route details:
-- `GET /` redirects to `/kiosk/register`
+- `GET /` redirects to `/patron/register`
+- `GET /kiosk/*` 301-redirects to `/patron/*` (backward compat for old QR codes)
 - `POST /staff/login` rate-limited (10/min via Flask-Limiter)
 - `GET /staff/s/<code>` — short scan route (redirects to completion page)
 - `POST /staff/scan` — extracts label code from full URL or bare input
@@ -143,12 +144,12 @@ Key route details:
 
 | File | Surface |
 |------|---------|
-| `base.html` | Shared layout — nav hidden on kiosk routes on phone |
-| `kiosk_register.html` | Patron registration form (conditional course/research fields) |
-| `kiosk_success.html` | Post-registration success + label preview, 10 s auto-return |
-| `staff_login.html` | Password gate (auto-return unless QR-driven) |
-| `staff_dashboard.html` | In-progress + completed tables, settings form, QR mode warning |
-| `staff_complete.html` | Mark Finished / Failed (failure notes required) |
+| `base.html` | Shared layout — nav hidden on patron routes |
+| `patron_register.html` | Patron registration form (conditional course/research fields) |
+| `patron_success.html` | Post-registration success with physical next steps, 10 s auto-return |
+| `staff_login.html` | Password gate |
+| `staff_dashboard.html` | In-progress + completed job cards, settings form, QR mode warning |
+| `staff_complete.html` | Mark Finished / Failed (inline confirm, failure notes required) |
 | `reports_monthly.html` | Month picker, 4 Chart.js charts, summary stats, CSV export |
 | `email_success.*` / `email_failure.*` | `.html` + `.txt` notification templates |
 
@@ -268,8 +269,8 @@ Copy the printed env values into the Pi's `.env`.
 ## Key Design Decisions
 
 1. **Phone-first architecture** — Cloudflare Tunnel for HTTPS; responsive
-   mobile-first CSS; nav hidden on kiosk in phone view; 48 px+ touch
-   targets; `viewport-fit=cover` for notched phones.
+   mobile-first CSS; nav hidden on patron routes; card-based staff
+   dashboard; 48 px+ touch targets; `viewport-fit=cover` for notched phones.
 
 2. **Multi-location support** — `DEFAULT_PRINTER_NAME` doubles as
    location name; `SITE_ID` prefixes label codes per site; `location`
@@ -285,8 +286,8 @@ Copy the printed env values into the Pi's `.env`.
 5. **Timezone-aware datetimes** — All timestamps use
    `datetime.now(timezone.utc)`.
 
-6. **DRY label printing** — `build_label_kwargs(job)` shared between
-   registration and reprint.
+6. **DRY label printing** — `build_label_kwargs(job)` in `routes/patron.py`
+   shared between registration and reprint.
 
 7. **Email auto-fallback** — `EMAIL_PROVIDER=auto` tries Gmail API first,
    falls back to SMTP.
