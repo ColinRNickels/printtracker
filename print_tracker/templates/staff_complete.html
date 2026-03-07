@@ -45,23 +45,23 @@
             <fieldset class="status-options">
                 <legend>Completion status</legend>
                 <label class="option-pill">
-                    <input type="radio" name="completion_status" value="finished" checked>
+                    <input type="radio" name="completion_status" value="finished" {% if form_data.completion_status == 'finished' %}checked{% endif %}>
                     Finished
                 </label>
                 <label class="option-pill">
-                    <input type="radio" name="completion_status" value="failed">
+                    <input type="radio" name="completion_status" value="failed" {% if form_data.completion_status == 'failed' %}checked{% endif %}>
                     Failed
                 </label>
             </fieldset>
 
             <label>
                 Completed by
-                <input id="completedBy" name="completed_by" required>
+                <input id="completedBy" name="completed_by" value="{{ form_data.completed_by }}" maxlength="120" required>
             </label>
 
             <label for="completionNotes">
                 <span id="completionNotesLabel">Notes for user/staff (optional)</span>
-                <textarea id="completionNotes" name="completion_notes" rows="4"></textarea>
+                <textarea id="completionNotes" name="completion_notes" rows="4">{{ form_data.completion_notes }}</textarea>
             </label>
 
             <button type="submit" id="completeSubmitBtn">Mark Complete and Notify User</button>

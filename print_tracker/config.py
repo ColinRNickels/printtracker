@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from pathlib import Path
 
 from werkzeug.security import generate_password_hash
@@ -9,8 +10,37 @@ DEFAULT_DB_PATH = BASE_DIR / "instance" / "print_tracker.db"
 DEFAULT_LABEL_DIR = BASE_DIR / "labels"
 
 
+def _env_flag(name: str, *, default: bool) -> bool:
+    raw_value = os.environ.get(name)
+    if raw_value is None:
+        return default
+    return raw_value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_int(
+    name: str,
+    *,
+    default: int,
+    minimum: int | None = None,
+    maximum: int | None = None,
+) -> int:
+    raw_value = os.environ.get(name)
+    try:
+        parsed = int(raw_value) if raw_value is not None else default
+    except ValueError:
+        parsed = default
+
+    if minimum is not None:
+        parsed = max(minimum, parsed)
+    if maximum is not None:
+        parsed = min(maximum, parsed)
+    return parsed
+
+
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "change-me")
+    HAS_EXPLICIT_SECRET_KEY = "SECRET_KEY" in os.environ
+    RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         "DATABASE_URL", f"sqlite:///{DEFAULT_DB_PATH}"
     )
@@ -18,11 +48,7 @@ class Config:
     STAFF_PASSWORD_HASH = generate_password_hash(
         os.environ.get("STAFF_PASSWORD", "staffpw")
     )
-
-    # Session cookie hardening
-    SESSION_COOKIE_SECURE = True
-    SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = "Lax"
+    HAS_EXPLICIT_STAFF_PASSWORD = "STAFF_PASSWORD" in os.environ
 
     # Label printing
     LABEL_PRINT_MODE = os.environ.get("LABEL_PRINT_MODE", "mock")  # mock | cups
@@ -112,3 +138,15 @@ class Config:
     GO_NCSU_LINK_SLUG = os.environ.get(
         "GO_NCSU_LINK_SLUG", "makerspace-print-label"
     ).strip()
+
+    # Session cookie hardening
+    SESSION_COOKIE_NAME = "print_tracker_session"
+    SESSION_COOKIE_SECURE = _env_flag(
+        "SESSION_COOKIE_SECURE",
+        default=KIOSK_BASE_URL.startswith("https://"),
+    )
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    PERMANENT_SESSION_LIFETIME = timedelta(
+        hours=_env_int("STAFF_SESSION_HOURS", default=12, minimum=1, maximum=168)
+    )

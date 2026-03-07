@@ -4,6 +4,20 @@
 <section class="panel">
     <h2>Staff Dashboard</h2>
     <p>Scan a QR code to open a print record instantly, then mark it Finished or Failed.</p>
+    <div class="dashboard-summary" aria-label="Current queue summary">
+        <div class="summary-chip">
+            <strong>{{ in_progress|length }}</strong>
+            <span>Active jobs</span>
+        </div>
+        <div class="summary-chip">
+            <strong>{{ recently_completed|length }}</strong>
+            <span>Recent completions</span>
+        </div>
+        <div class="summary-chip">
+            <strong>{{ operational_settings.qr_payload_mode|upper }}</strong>
+            <span>QR mode</span>
+        </div>
+    </div>
     <form method="post" action="{{ url_for('staff.logout') }}" class="inline-action">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="button-link button-danger">Lock Staff Page</button>
@@ -13,7 +27,7 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label>
             Scan QR / enter Print ID
-            <input id="scanValue" name="scan_value" autofocus placeholder="Scan value or code">
+            <input id="scanValue" name="scan_value" autofocus placeholder="Scan value or code" autocomplete="off" autocapitalize="characters" spellcheck="false">
         </label>
         <button type="submit">Open Job</button>
     </form>

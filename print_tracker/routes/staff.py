@@ -56,7 +56,7 @@ def _extract_label_code(scan_value: str) -> str:
 def _is_safe_next_url(value: str) -> bool:
     if not value:
         return False
-    return value.startswith("/")
+    return value.startswith("/") and not value.startswith("//")
 
 
 def _sanitize_next_url(value: str) -> str:
@@ -65,7 +65,7 @@ def _sanitize_next_url(value: str) -> str:
         return ""
 
     if raw.startswith("/"):
-        return raw
+        return raw if _is_safe_next_url(raw) else ""
 
     parsed = urlparse(raw)
     if (
@@ -79,6 +79,28 @@ def _sanitize_next_url(value: str) -> str:
         return path if path.startswith("/") else f"/{path}"
 
     return ""
+
+
+def _safe_redirect_target(value: str, *, fallback_endpoint: str) -> str:
+    destination = _sanitize_next_url(value)
+    if _is_safe_next_url(destination):
+        return destination
+    return url_for(fallback_endpoint)
+
+
+def _find_job_by_code(label_code: str) -> PrintJob | None:
+    return PrintJob.query.filter_by(label_code=label_code.upper()).first()
+
+
+def _build_completion_form_data(form_data: dict | None = None) -> dict:
+    defaults = {
+        "completion_status": JOB_STATUS_FINISHED,
+        "completed_by": "",
+        "completion_notes": "",
+    }
+    if form_data:
+        defaults.update(form_data)
+    return defaults
 
 
 @bp.before_request
@@ -98,10 +120,13 @@ def login():
     if request.method == "POST":
         password = request.form.get("password", "")
         if check_password_hash(current_app.config["STAFF_PASSWORD_HASH"], password):
+            session.clear()
+            session.permanent = True
             session[STAFF_SESSION_KEY] = True
-            destination = _sanitize_next_url(request.form.get("next", ""))
-            if not _is_safe_next_url(destination):
-                destination = url_for("staff.dashboard")
+            destination = _safe_redirect_target(
+                request.form.get("next", ""),
+                fallback_endpoint="staff.dashboard",
+            )
             flash("Staff access granted.", "success")
             return redirect(destination)
         flash("Incorrect staff password.", "error")
@@ -115,7 +140,7 @@ def login():
 
 @bp.route("/logout", methods=["POST"])
 def logout():
-    session.pop(STAFF_SESSION_KEY, None)
+    session.clear()
     flash("Signed out of staff mode.", "success")
     return redirect(url_for("staff.login"))
 
@@ -204,7 +229,11 @@ def scan():
     if not code:
         flash("No scan value detected.", "error")
         return redirect(url_for("staff.dashboard"))
-    return redirect(url_for("staff.complete_job", label_code=code))
+    job = _find_job_by_code(code)
+    if not job:
+        flash(f"No print found for {code}.", "error")
+        return redirect(url_for("staff.dashboard"))
+    return redirect(url_for("staff.complete_job", label_code=job.label_code))
 
 
 @bp.route("/s/<label_code>", methods=["GET"])
@@ -213,7 +242,11 @@ def scan_shortcut(label_code: str):
     if not code:
         flash("Invalid print ID.", "error")
         return redirect(url_for("staff.dashboard"))
-    return redirect(url_for("staff.complete_job", label_code=code))
+    job = _find_job_by_code(code)
+    if not job:
+        flash(f"No print found for {code}.", "error")
+        return redirect(url_for("staff.dashboard"))
+    return redirect(url_for("staff.complete_job", label_code=job.label_code))
 
 
 @bp.route("/reprint/<label_code>", methods=["POST"])
@@ -227,12 +260,18 @@ def reprint(label_code: str):
             f"Reprint was not sent for {job.label_code}: {label_result['message']}",
             "warning",
         )
-    return redirect(request.referrer or url_for("staff.dashboard"))
+    return redirect(
+        _safe_redirect_target(
+            request.referrer or "",
+            fallback_endpoint="staff.dashboard",
+        )
+    )
 
 
 @bp.route("/complete/<label_code>", methods=["GET", "POST"])
 def complete_job(label_code: str):
     job = PrintJob.query.filter_by(label_code=label_code.upper()).first_or_404()
+    form_data = _build_completion_form_data()
 
     if request.method == "POST":
         if job.is_completed:
@@ -240,8 +279,15 @@ def complete_job(label_code: str):
             return redirect(url_for("staff.complete_job", label_code=job.label_code))
 
         completion_status = request.form.get("completion_status", "").strip()
-        completed_by = request.form.get("completed_by", "").strip()
+        completed_by = " ".join(request.form.get("completed_by", "").split())
         completion_notes = request.form.get("completion_notes", "").strip()
+        form_data = _build_completion_form_data(
+            {
+                "completion_status": completion_status,
+                "completed_by": completed_by,
+                "completion_notes": completion_notes,
+            }
+        )
 
         errors = []
         if completion_status not in {JOB_STATUS_FINISHED, JOB_STATUS_FAILED}:
@@ -254,7 +300,7 @@ def complete_job(label_code: str):
         if errors:
             for error in errors:
                 flash(error, "error")
-            return render_template("staff_complete.html", job=job)
+            return render_template("staff_complete.html", job=job, form_data=form_data)
 
         job.mark_completed(
             outcome=completion_status,
@@ -297,4 +343,4 @@ def complete_job(label_code: str):
 
         return redirect(url_for("staff.complete_job", label_code=job.label_code))
 
-    return render_template("staff_complete.html", job=job)
+    return render_template("staff_complete.html", job=job, form_data=form_data)

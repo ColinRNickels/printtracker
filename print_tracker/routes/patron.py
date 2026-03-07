@@ -1,4 +1,5 @@
 import io
+import re
 import time
 from datetime import datetime
 from pathlib import Path
@@ -14,7 +15,7 @@ from flask import (
     url_for,
 )
 
-from ..extensions import db
+from ..extensions import db, limiter
 from ..models import (
     JOB_CATEGORIES,
     JOB_CATEGORY_COURSE,
@@ -34,6 +35,7 @@ CATEGORY_OPTIONS = [
     (JOB_CATEGORY_COURSE, "Academic"),
     (JOB_CATEGORY_RESEARCH, "Research"),
 ]
+UNITY_ID_PATTERN = re.compile(r"^[a-z0-9._+-]+$")
 
 
 def build_label_kwargs(job) -> dict:
@@ -84,6 +86,8 @@ def _normalize_ncsu_email(raw_value: str) -> str:
     value = raw_value.strip().lower()
     if not value:
         raise ValueError("Email is required.")
+    if any(character.isspace() for character in value):
+        raise ValueError("Enter a valid NCSU unity ID or email address.")
 
     # Accept full ncsu.edu addresses and strip the domain
     if "@" in value:
@@ -93,6 +97,8 @@ def _normalize_ncsu_email(raw_value: str) -> str:
         value = local
     if not value:
         raise ValueError("Email is required.")
+    if not UNITY_ID_PATTERN.fullmatch(value):
+        raise ValueError("Enter a valid NCSU unity ID or email address.")
     return f"{value}@{NCSU_EMAIL_DOMAIN}"
 
 
@@ -100,7 +106,12 @@ def _normalize_person_name(raw_value: str) -> str:
     return " ".join(raw_value.strip().split())
 
 
+def _normalize_single_line(raw_value: str) -> str:
+    return " ".join(raw_value.strip().split())
+
+
 @bp.route("/register", methods=["GET", "POST"])
+@limiter.limit("20/minute")
 def register():
     form = {
         "file_name": "",
@@ -116,8 +127,21 @@ def register():
 
     if request.method == "POST":
         form.update({key: request.form.get(key, "").strip() for key in form})
+        form["file_name"] = _normalize_single_line(form["file_name"])
         form["first_name"] = _normalize_person_name(form["first_name"])
         form["last_name"] = _normalize_person_name(form["last_name"])
+        form["course_number"] = _normalize_single_line(form["course_number"])
+        form["instructor"] = _normalize_person_name(form["instructor"])
+        form["department"] = _normalize_single_line(form["department"])
+        form["pi_name"] = _normalize_person_name(form["pi_name"])
+
+        if form["category"] != JOB_CATEGORY_COURSE:
+            form["course_number"] = ""
+            form["instructor"] = ""
+        if form["category"] != JOB_CATEGORY_RESEARCH:
+            form["department"] = ""
+            form["pi_name"] = ""
+
         errors = []
 
         if not form["file_name"]:

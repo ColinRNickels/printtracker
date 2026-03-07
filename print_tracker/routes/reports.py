@@ -5,6 +5,7 @@ from io import StringIO
 from flask import (
     Blueprint,
     Response,
+    flash,
     redirect,
     render_template,
     request,
@@ -34,7 +35,12 @@ def require_staff_auth():
 
 def _month_window(month_value: str | None) -> tuple[datetime, datetime]:
     if month_value:
-        month_start_date = datetime.strptime(month_value, "%Y-%m").date().replace(day=1)
+        try:
+            month_start_date = (
+                datetime.strptime(month_value, "%Y-%m").date().replace(day=1)
+            )
+        except ValueError as exc:
+            raise ValueError("Month must use the YYYY-MM format.") from exc
     else:
         today = date.today()
         month_start_date = date(today.year, today.month, 1)
@@ -51,8 +57,12 @@ def _month_window(month_value: str | None) -> tuple[datetime, datetime]:
 
 @bp.route("/monthly")
 def monthly():
-    month_value = request.args.get("month")
-    month_start, month_end = _month_window(month_value)
+    month_value = (request.args.get("month") or "").strip() or None
+    try:
+        month_start, month_end = _month_window(month_value)
+    except ValueError as exc:
+        flash(str(exc), "error")
+        month_start, month_end = _month_window(None)
 
     jobs = (
         PrintJob.query.filter(
@@ -116,8 +126,11 @@ def monthly():
 
 @bp.route("/monthly.csv")
 def monthly_csv():
-    month_value = request.args.get("month")
-    month_start, month_end = _month_window(month_value)
+    month_value = (request.args.get("month") or "").strip() or None
+    try:
+        month_start, month_end = _month_window(month_value)
+    except ValueError:
+        month_start, month_end = _month_window(None)
 
     jobs = (
         PrintJob.query.filter(

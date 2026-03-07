@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from flask import Flask, redirect, url_for
 from sqlalchemy import event, inspect, text
 from sqlalchemy.engine import Engine, make_url
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .extensions import csrf, db, limiter
 
@@ -79,6 +80,23 @@ def _normalize_path_setting(*, base_dir: Path, value: str) -> str:
     return str(candidate.resolve())
 
 
+def _warn_for_insecure_defaults(app: Flask) -> None:
+    if not app.config.get("HAS_EXPLICIT_SECRET_KEY"):
+        app.logger.warning(
+            "SECRET_KEY is using the built-in default. Configure SECRET_KEY before shared or production use."
+        )
+    if not app.config.get("HAS_EXPLICIT_STAFF_PASSWORD"):
+        app.logger.warning(
+            "STAFF_PASSWORD is using the built-in default. Configure STAFF_PASSWORD before shared or production use."
+        )
+
+    kiosk_base_url = (app.config.get("KIOSK_BASE_URL", "") or "").strip()
+    if kiosk_base_url and not kiosk_base_url.startswith("https://"):
+        app.logger.warning(
+            "KIOSK_BASE_URL does not use HTTPS. Staff QR links will work better and more safely over HTTPS."
+        )
+
+
 def create_app() -> Flask:
     # Load project .env regardless of how Flask is started (run.py or flask CLI).
     load_dotenv(Path(__file__).resolve().parent.parent / ".env")
@@ -86,6 +104,7 @@ def create_app() -> Flask:
 
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(Config)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
     app.config["SQLALCHEMY_DATABASE_URI"] = _normalize_sqlite_database_uri(
         base_dir=Path(__file__).resolve().parent.parent,
         uri=app.config["SQLALCHEMY_DATABASE_URI"],
@@ -135,5 +154,7 @@ def create_app() -> Flask:
         db.create_all()
         _apply_schema_upgrades()
         print("Database initialized.")
+
+    _warn_for_insecure_defaults(app)
 
     return app
