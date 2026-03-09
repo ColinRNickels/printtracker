@@ -127,8 +127,13 @@ tui_field() {
 
 tui_prompt() {
   local label="$1" default="$2"
-  printf '\n  %b%s%b %b[%s]%b: ' \
-    "${C_BOLD}" "${label}" "${C_RESET}" "${C_CYAN}" "${default}" "${C_RESET}"
+  if [[ -n "${default}" ]]; then
+    printf '\n  %b%s%b %b[%s]%b: ' \
+      "${C_BOLD}" "${label}" "${C_RESET}" "${C_CYAN}" "${default}" "${C_RESET}" >/dev/tty
+  else
+    printf '\n  %b%s%b: ' \
+      "${C_BOLD}" "${label}" "${C_RESET}" >/dev/tty
+  fi
 }
 
 # ── Core helpers ──────────────────────────────────────────────────────────
@@ -192,8 +197,49 @@ prompt_default() {
     return 0
   fi
   tui_prompt "${prompt}" "${default}"
-  read -r input
+  read -r input </dev/tty
   printf '%s' "${input:-${default}}"
+}
+
+prompt_choice() {
+  # Display a numbered menu and return the chosen value.
+  # Usage: result="$(prompt_choice "label" default_value option1 option2 ...)"
+  local label="$1" default="$2"; shift 2
+  local options=("$@")
+  local default_num=1
+  local i
+
+  for i in "${!options[@]}"; do
+    if [[ "${options[$i]}" == "${default}" ]]; then
+      default_num=$((i + 1))
+      break
+    fi
+  done
+
+  for i in "${!options[@]}"; do
+    local marker="  "
+    [[ $((i + 1)) -eq ${default_num} ]] && marker="${C_CYAN}>${C_RESET} "
+    printf '    %s%b%d)%b  %s\n' "${marker}" "${C_BOLD}" "$((i + 1))" "${C_RESET}" "${options[$i]}" >/dev/tty
+  done
+
+  if [[ "${NON_INTERACTIVE}" -eq 1 ]]; then
+    printf '%s' "${default}"
+    return 0
+  fi
+
+  local input
+  while true; do
+    printf '\n  %b%s%b %b[%d]%b: ' \
+      "${C_BOLD}" "${label}" "${C_RESET}" "${C_CYAN}" "${default_num}" "${C_RESET}" >/dev/tty
+    read -r input </dev/tty
+    [[ -z "${input}" ]] && input="${default_num}"
+    if [[ "${input}" =~ ^[0-9]+$ ]] && (( input >= 1 && input <= ${#options[@]} )); then
+      printf '%s' "${options[$((input - 1))]}"
+      return 0
+    fi
+    printf '  %b%s Please enter a number between 1 and %d.%b\n' \
+      "${C_YELLOW}" "${SYM_WARN}" "${#options[@]}" "${C_RESET}" >/dev/tty
+  done
 }
 
 prompt_yes_no() {
@@ -366,7 +412,11 @@ fi
 
 PROJECT_DIR="${DEPLOY_DIR}"
 [[ -f "${PROJECT_DIR}/requirements.txt" ]] || die "Repository clone failed or requirements.txt is missing."
-[[ "${PRINT_MODE}" == "cups" || "${PRINT_MODE}" == "mock" ]] || die "--print-mode must be cups or mock."
+# Validate print-mode early when running non-interactively (the wizard
+# guarantees a valid value via numbered menu when interactive).
+if [[ "${NON_INTERACTIVE}" -eq 1 ]]; then
+  [[ "${PRINT_MODE}" == "cups" || "${PRINT_MODE}" == "mock" ]] || die "Print mode must be 'cups' or 'mock'."
+fi
 
 # ╔═══════════════════════════════════════════════════════════════════════╗
 # ║                       INTERACTIVE WIZARD                              ║
@@ -454,12 +504,13 @@ LOGO
   printf '\n'
   tui_hint "Print mode — how labels are handled:"
   printf '\n'
-  tui_explain "    cups   Send labels to a real Brother QL printer via USB."
+  tui_explain "    cups — Send labels to a real Brother QL printer via USB."
   tui_explain "           Choose this for a production station."
   printf '\n'
-  tui_explain "    mock   Don't print anything. Labels are saved as images in"
+  tui_explain "    mock — Don't print anything. Labels are saved as images in"
   tui_explain "           the labels/ folder. Good for testing without a printer."
-  PRINT_MODE="$(prompt_default "Print mode (cups / mock)" "${PRINT_MODE}")"
+  printf '\n'
+  PRINT_MODE="$(prompt_choice "Print mode" "${PRINT_MODE}" "cups" "mock")"
   printf '\n'
 
   if [[ "${PRINT_MODE}" == "cups" ]]; then
