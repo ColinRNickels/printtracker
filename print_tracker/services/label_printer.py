@@ -289,19 +289,16 @@ def _cups_command_for_image(
     orientation: str,
     extra_options: str,
 ) -> list[str]:
-    orientation_requested = (
-        "3" if _normalize_orientation(orientation) == "portrait" else "4"
-    )
     cmd = [
         "lp",
         "-d",
         queue_name,
         "-o",
-        f"media={media}",
+        f"PageSize={media}",
         "-o",
-        f"orientation-requested={orientation_requested}",
+        "MediaType=Labels",
         "-o",
-        "scaling=100",
+        "fit-to-page",
         file_path,
     ]
     raw_options = [item.strip() for item in extra_options.split(",") if item.strip()]

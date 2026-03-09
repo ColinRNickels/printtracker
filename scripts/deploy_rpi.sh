@@ -12,8 +12,8 @@ REPO_URL="https://github.com/ColinRNickels/printtracker.git"
 DEPLOY_DIR=""
 PORT="5000"
 PRINT_MODE="cups"
-PRINTER_QUEUE="QL800"
-LABEL_MEDIA="DK-1202"
+PRINTER_QUEUE="QL-800"
+LABEL_MEDIA="62x100mm"
 STAFF_PASSWORD=""
 SITE_ID=""
 LOCATION_NAME="Makerspace"
@@ -158,8 +158,8 @@ Options:
   --port PORT              App port (default: 5000).
   --print-mode MODE        "cups" or "mock" (default: cups).
   --repo-dir PATH          Where to clone/update the repo (default: ~/PrintTracker).
-  --printer-queue NAME     CUPS queue name (default: QL800).
-  --media NAME             CUPS media token (default: DK-1202).
+  --printer-queue NAME     CUPS queue name (default: QL-800).
+  --media NAME             CUPS page size (default: 62x100mm).
   --staff-password PASS    Staff dashboard password (required).
   --setup-google-oauth     Run Google OAuth setup during deploy.
   --no-google-oauth        Skip Google OAuth setup during deploy.
@@ -432,7 +432,7 @@ if [[ "${DELETE_MODE}" -eq 1 ]]; then
   printf '\n'
   # Stop and remove services
   for svc in "${SERVICE_NAME}" cloudflared-quick; do
-    if run_root systemctl list-unit-files 2>/dev/null | grep -q "^${svc}\.service"; then
+    if [[ -f "/etc/systemd/system/${svc}.service" ]]; then
       tui_progress "Stopping ${svc}"
       run_root systemctl stop "${svc}" 2>/dev/null || true
       run_root systemctl disable "${svc}" 2>/dev/null || true
@@ -512,7 +512,7 @@ if [[ "${UPDATE_MODE}" -eq 1 ]]; then
   tui_success "Database OK."
 
   # 4. Restart services
-  if run_root systemctl list-unit-files 2>/dev/null | grep -q "^${SERVICE_NAME}\.service"; then
+  if [[ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]]; then
     tui_progress "Restarting ${SERVICE_NAME}"
     run_root systemctl restart "${SERVICE_NAME}"
     tui_success "${SERVICE_NAME} restarted."
@@ -520,7 +520,7 @@ if [[ "${UPDATE_MODE}" -eq 1 ]]; then
     tui_warn "${SERVICE_NAME}.service not found — run a full deploy to create it."
   fi
 
-  if run_root systemctl list-unit-files 2>/dev/null | grep -q "^cloudflared-quick\.service"; then
+  if [[ -f "/etc/systemd/system/cloudflared-quick.service" ]]; then
     tui_progress "Restarting cloudflared-quick"
     run_root systemctl restart cloudflared-quick
     tui_success "cloudflared-quick restarted (new tunnel URL will be detected)."
@@ -562,8 +562,8 @@ if [[ -f "${ENV_FILE}" ]]; then
 
   _maybe PORT                "PORT"                          "5000"
   _maybe PRINT_MODE          "LABEL_PRINT_MODE"              "cups"
-  _maybe PRINTER_QUEUE       "LABEL_PRINTER_QUEUE"           "QL800"
-  _maybe LABEL_MEDIA         "LABEL_CUPS_MEDIA"              "DK-1202"
+  _maybe PRINTER_QUEUE       "LABEL_PRINTER_QUEUE"           "QL-800"
+  _maybe LABEL_MEDIA         "LABEL_CUPS_MEDIA"              "62x100mm"
   _maybe LOCATION_NAME       "DEFAULT_PRINTER_NAME"          "Makerspace"
   _maybe SITE_ID             "SITE_ID"                       ""
   _maybe GO_NCSU_API_TOKEN   "GO_NCSU_API_TOKEN"             ""
@@ -580,7 +580,7 @@ if [[ -f "${ENV_FILE}" ]]; then
 
   # Pre-fill tunnel / golink decisions based on whether they were configured.
   if [[ "${SETUP_TUNNEL}" -lt 0 ]]; then
-    if run_root systemctl list-unit-files 2>/dev/null | grep -q "^cloudflared-quick\.service"; then
+    if [[ -f "/etc/systemd/system/cloudflared-quick.service" ]]; then
       SETUP_TUNNEL=1
     fi
   fi
@@ -704,14 +704,14 @@ LOGO
     tui_hint "CUPS queue name — the name of your printer in the Linux print system."
     tui_explain "  If you've already set up the printer, you can see its name by running:"
     tui_explain "    lpstat -e"
-    tui_explain "  The default 'QL800' matches a standard Brother QL-800."
+    tui_explain "  The default 'QL-800' matches a standard Brother QL-800."
     PRINTER_QUEUE="$(prompt_default "CUPS queue name" "${PRINTER_QUEUE}")"
     printf '\n'
 
-    tui_hint "Media token — tells the printer what size labels are loaded."
-    tui_explain "  DK-1202 = standard 62 mm × 100 mm Brother address labels."
+    tui_hint "Page size — tells the printer what size labels are loaded."
+    tui_explain "  62x100mm = standard Brother DK-1202 address labels (62 mm × 100 mm)."
     tui_explain "  Only change this if you're using a different label stock."
-    LABEL_MEDIA="$(prompt_default "CUPS media token" "${LABEL_MEDIA}")"
+    LABEL_MEDIA="$(prompt_default "CUPS page size" "${LABEL_MEDIA}")"
     printf '\n'
   fi
 
@@ -1099,7 +1099,7 @@ fi
 
 if [[ "${VENV_OK}" -eq 0 ]]; then
   if [[ -d "${VENV_DIR}" ]]; then
-    if run_root systemctl list-unit-files 2>/dev/null | grep -q "^${SERVICE_NAME}\.service"; then
+    if [[ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]]; then
       run_root systemctl stop "${SERVICE_NAME}" || true
     fi
     rm -rf "${VENV_DIR}"

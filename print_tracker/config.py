@@ -67,7 +67,7 @@ class Config:
         "NC State University Libraries Makerspace",
     )
     LABEL_BRAND_LOGO_PATH = os.environ.get("LABEL_BRAND_LOGO_PATH", "")
-    LABEL_CUPS_MEDIA = os.environ.get("LABEL_CUPS_MEDIA", "DK-1202")
+    LABEL_CUPS_MEDIA = os.environ.get("LABEL_CUPS_MEDIA", "62x100mm")
     LABEL_CUPS_EXTRA_OPTIONS = os.environ.get("LABEL_CUPS_EXTRA_OPTIONS", "")
     LABEL_SAVE_LABEL_FILES = os.environ.get(
         "LABEL_SAVE_LABEL_FILES", "true"
