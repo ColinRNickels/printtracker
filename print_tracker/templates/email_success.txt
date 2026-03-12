@@ -22,8 +22,8 @@ Staff note:
 {{ job.completion_notes }}
 {% endif %}
 
-Please pick up your print at the Ask Us desk. You can find the current hours at https://lib.ncsu.edu/hours
+Please pick up your print at the {{ location }} desk. You can find the current hours at https://lib.ncsu.edu/hours
 
-Thanks for using the Makerspace!
+Thanks for using the {{ location }}!
 
 NC State University Libraries Makerspace Team

@@ -404,9 +404,18 @@ if [[ "${GOOGLE_SPREADSHEET_ID}" == *"docs.google.com/spreadsheets"* ]]; then
 fi
 
 # ── Resolve deploy directory ───────────────────────────────────────────────
+# If the user is running the script from inside an existing clone (e.g. they
+# ran "git clone … && cd PrintTracker && ./scripts/deploy_rpi.sh"), use that
+# directory instead of cloning a second copy.
 if [[ -z "${DEPLOY_DIR}" ]]; then
-  SERVICE_HOME="$(getent passwd "${SERVICE_USER}" 2>/dev/null | cut -d: -f6 || echo "${HOME}")"
-  DEPLOY_DIR="${SERVICE_HOME}/PrintTracker"
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  CANDIDATE_DIR="$(dirname "${SCRIPT_DIR}")"
+  if [[ -f "${CANDIDATE_DIR}/requirements.txt" && -d "${CANDIDATE_DIR}/.git" ]]; then
+    DEPLOY_DIR="${CANDIDATE_DIR}"
+  else
+    SERVICE_HOME="$(getent passwd "${SERVICE_USER}" 2>/dev/null | cut -d: -f6 || echo "${HOME}")"
+    DEPLOY_DIR="${SERVICE_HOME}/PrintTracker"
+  fi
 fi
 
 # ── Handle --delete early (no clone needed) ───────────────────────────────
@@ -460,6 +469,15 @@ if [[ "${DELETE_MODE}" -eq 1 ]]; then
   printf '\n'
   exit 0
 fi
+
+# ── Ensure git and curl are available (needed for clone & cloudflared) ─────
+for _needed_cmd in git curl; do
+  if ! command -v "${_needed_cmd}" >/dev/null 2>&1; then
+    log "Installing ${_needed_cmd} (needed before we can continue)..."
+    run_root apt-get update -qq
+    run_root apt-get install -y -qq "${_needed_cmd}"
+  fi
+done
 
 # ── Clone or update the repository ────────────────────────────────────────
 if [[ -d "${DEPLOY_DIR}/.git" ]]; then
@@ -1067,10 +1085,11 @@ if [[ "${SKIP_APT}" -eq 0 ]]; then
 
   run_root apt-get update -qq
   APT_PACKAGES=(
-    git
+    git curl
     python3-venv python3-pip python3-dev build-essential
     cups cups-client cups-bsd
     printer-driver-ptouch
+    fonts-dejavu-core
     avahi-daemon
     usbutils
   )
@@ -1161,6 +1180,7 @@ set_env_value "${ENV_FILE}" "LABEL_SAVE_LABEL_FILES" "true"
 set_env_value "${ENV_FILE}" "LABEL_BRAND_TEXT" "NC State University Libraries Makerspace"
 [[ -f "${LOGO_DEST}" ]] && set_env_value "${ENV_FILE}" "LABEL_BRAND_LOGO_PATH" "${LOGO_DEST}"
 set_env_value "${ENV_FILE}" "DEFAULT_PRINTER_NAME" "${LOCATION_NAME}"
+set_env_value "${ENV_FILE}" "PORT" "${PORT}"
 [[ -n "${SITE_ID}" ]] && set_env_value "${ENV_FILE}" "SITE_ID" "${SITE_ID}"
 
 EXISTING_GO_TOKEN="$(get_env_value "${ENV_FILE}" "GO_NCSU_API_TOKEN")"
@@ -1222,6 +1242,27 @@ if [[ "${SKIP_CUPS}" -eq 0 ]]; then
     else
       tui_warn "No QL USB backend listed yet — the printer may need manual CUPS setup."
     fi
+  fi
+
+  # Attempt to auto-create the CUPS printer queue if it doesn't exist yet.
+  if [[ "${PRINT_MODE}" == "cups" ]] && ! lpstat -e 2>/dev/null | grep -qx "${PRINTER_QUEUE}"; then
+    BROTHER_URI="$(lpinfo -v 2>/dev/null | grep -Ei 'usb.*brother|usb.*ql' | head -1 | awk '{print $2}' || true)"
+    if [[ -n "${BROTHER_URI}" ]]; then
+      tui_progress "Creating CUPS queue '${PRINTER_QUEUE}' → ${BROTHER_URI}"
+      run_root lpadmin -p "${PRINTER_QUEUE}" -E -v "${BROTHER_URI}" -m everywhere 2>/dev/null \
+        || run_root lpadmin -p "${PRINTER_QUEUE}" -E -v "${BROTHER_URI}" 2>/dev/null \
+        || true
+      if lpstat -e 2>/dev/null | grep -qx "${PRINTER_QUEUE}"; then
+        tui_success "CUPS queue '${PRINTER_QUEUE}' created."
+      else
+        tui_warn "Could not auto-create CUPS queue — set it up manually at http://localhost:631"
+      fi
+    else
+      tui_warn "No Brother USB device URI found — plug in the printer and run:"
+      tui_explain "  sudo lpadmin -p ${PRINTER_QUEUE} -E -v <device-uri> -m everywhere"
+    fi
+  elif [[ "${PRINT_MODE}" == "cups" ]]; then
+    tui_success "CUPS queue '${PRINTER_QUEUE}' already exists."
   fi
 else
   tui_warn "Skipping CUPS setup (--skip-cups)."
@@ -1342,7 +1383,16 @@ elif [[ "${SETUP_GOLINK}" -eq 1 ]]; then
   tui_warn "GoLink setup requested but token or slug is missing — skipping."
 fi
 
-# ── 11. systemd service ──────────────────────────────────────────────────
+# ── 11. Fix file ownership ────────────────────────────────────────────────
+# When the script runs via sudo, files are created as root. The print-tracker
+# service runs as SERVICE_USER, so it needs to own the app directory.
+if [[ "$(id -u)" -eq 0 && "${SERVICE_USER}" != "root" ]]; then
+  tui_progress "Setting file ownership to ${SERVICE_USER}:${SERVICE_GROUP}"
+  chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${APP_DIR}"
+  tui_success "Ownership set on ${APP_DIR}"
+fi
+
+# ── 12. systemd service ──────────────────────────────────────────────────
 if [[ "${SKIP_SERVICE}" -eq 0 ]]; then
   tui_progress "Creating systemd service (${SERVICE_NAME})"
   run_root tee "/etc/systemd/system/${SERVICE_NAME}.service" >/dev/null <<EOF

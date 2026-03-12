@@ -61,8 +61,9 @@
 
             <label for="completionNotes">
                 <span id="completionNotesLabel">Notes for user/staff (optional)</span>
-                <textarea id="completionNotes" name="completion_notes" rows="4">{{ form_data.completion_notes }}</textarea>
+                <textarea id="completionNotes" name="completion_notes" rows="4" placeholder="These notes are visible to the patron in their email.">{{ form_data.completion_notes }}</textarea>
             </label>
+            <p class="help-text" style="margin-top:2px;font-size:0.85em;color:#888;">⚠ These notes will be included in the email sent to the patron.</p>
 
             <button type="submit" id="completeSubmitBtn">Mark Complete and Notify User</button>
         </form>

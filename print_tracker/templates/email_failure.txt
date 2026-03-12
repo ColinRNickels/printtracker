@@ -1,6 +1,6 @@
 Hi {{ job.user_name }},
 
-Thank you for using the NC State Libraries Makerspace! We wanted to let you know that your 3D print ran into an issue. Unfortunately, this print was not able to complete successfully.
+Thank you for using the NC State Libraries {{ location }}! We wanted to let you know that your 3D print ran into an issue. Unfortunately, this print was not able to complete successfully.
 
 Print ID: {{ job.label_code }}
 Project type: {{ job.category_label }}
@@ -22,7 +22,7 @@ Here's what our team noted:
 {{ job.completion_notes }}
 {% endif %}
 
-We know this can be frustrating, and we're happy to help you get your project back on track. Please stop by the makerspace desk and our staff will be glad to assist you with next steps — whether that's adjusting your file, reprinting, or exploring other options.
+We know this can be frustrating, and we're happy to help you get your project back on track. Please stop by the {{ location }} desk and our staff will be glad to assist you with next steps — whether that's adjusting your file, reprinting, or exploring other options.
 
 You can find the current hours of the space at https://lib.ncsu.edu/hours
 

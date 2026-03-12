@@ -157,66 +157,72 @@ PORT=5050 python run.py
 
 ### 3.1 One-time setup
 
-Use Raspberry Pi OS Desktop (Bookworm or later). Plug the Pi into wired
-Ethernet.
+Use Raspberry Pi OS (Desktop or Lite, Bookworm or later). Plug the Pi
+into wired Ethernet and connect the Brother QL-800 printer via USB.
+
+**One command does everything:**
 
 ```bash
 sudo apt update && sudo apt install -y git
-sudo mkdir -p /opt/print-tracker
-sudo chown -R "$USER:$USER" /opt/print-tracker
-cd /opt/print-tracker
-git clone <YOUR_REPO_URL> .
-chmod +x scripts/deploy_rpi.sh
-./scripts/deploy_rpi.sh
+git clone https://github.com/ColinRNickels/printtracker.git ~/PrintTracker
+cd ~/PrintTracker
+sudo ./scripts/deploy_rpi.sh
 ```
+
+The interactive wizard walks you through every setting (staff password,
+printer, tunnel, Google integration, etc.). When it finishes the app is
+live and printing.
 
 ### 3.2 What the deploy script does
 
 `scripts/deploy_rpi.sh` automates:
 
-- apt packages (`cups`, `printer-driver-ptouch`, `network-manager`, etc.)
+- System packages (`cups`, `printer-driver-ptouch`, `cloudflared`,
+  `curl`, `fonts-dejavu-core`, etc.)
 - Python virtualenv + dependencies
-- `.env` creation/update
-- DB init
-- systemd service (`print-tracker`)
-- Optional Wi-Fi AP for staff scanning (default ON but not required with
-  Cloudflare Tunnel)
-- Optional Chromium autostart (default ON but not required for
-  phone-first workflow)
-- Optional Google OAuth setup
+- `.env` creation/update with all settings
+- Database initialization
+- CUPS printer queue auto-creation (if a Brother USB printer is detected)
+- systemd services (`print-tracker` + optional `cloudflared-quick`)
+- File ownership (so the service user can write to the DB and labels dir)
+- Optional Cloudflare quick tunnel for public HTTPS access
+- Optional go.ncsu.edu short link
+- Optional Google OAuth setup (Gmail notifications + Sheets sync)
 
 ### 3.3 Brother QL-800 setup (CUPS)
 
-Printer queue needs manual CUPS configuration:
+The deploy script auto-creates the CUPS printer queue if it detects a
+Brother USB device. If the printer is not plugged in during deploy, or
+auto-detection fails, you can set it up manually:
 
 1. Plug in QL-800 via USB.
 2. Open `http://localhost:631`.
 3. Administration → Add Printer.
 4. Select the Brother device and driver.
-5. Set the queue name to match `.env` (default `QL800`).
+5. Set the queue name to match `.env` (default `QL-800`).
 
 Verify:
 
 ```bash
 lpstat -e
 lpstat -p -d
-lp -d QL800 /usr/share/cups/data/testprint
+lp -d QL-800 /usr/share/cups/data/testprint
 ```
 
 ### 3.4 Deploy script examples
 
 ```bash
-# Accept all defaults
-./scripts/deploy_rpi.sh --non-interactive
+# Accept all defaults (interactive wizard)
+sudo ./scripts/deploy_rpi.sh
+
+# Non-interactive with defaults
+sudo ./scripts/deploy_rpi.sh --non-interactive --staff-password 'YourPassword'
 
 # Development/testing without a printer
-./scripts/deploy_rpi.sh --print-mode mock
-
-# Skip AP and Chromium autostart (phone-first setup)
-./scripts/deploy_rpi.sh --no-ap --no-kiosk-autostart
+sudo ./scripts/deploy_rpi.sh --print-mode mock
 
 # Full Google OAuth setup
-./scripts/deploy_rpi.sh \
+sudo ./scripts/deploy_rpi.sh \
   --setup-google-oauth \
   --google-client-secrets ~/Downloads/client_secret.json \
   --google-gmail-sender makerspace@ncsu.edu \

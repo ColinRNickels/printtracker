@@ -14,7 +14,7 @@
         <td style="padding:24px 24px 32px;">
             <p style="margin:0 0 16px;font-size:16px;line-height:1.5;">Hi {{ job.user_name }},</p>
 
-            <p style="margin:0 0 16px;font-size:16px;line-height:1.5;">Thank you for using the NC State Libraries Makerspace! We wanted to let you know that we ran into an issue with your 3D print <strong>&ldquo;{{ job.file_name }}&rdquo;</strong>. Unfortunately, this print was not able to complete successfully.</p>
+            <p style="margin:0 0 16px;font-size:16px;line-height:1.5;">Thank you for using the NC State Libraries {{ location }}! We wanted to let you know that we ran into an issue with your 3D print <strong>&ldquo;{{ job.file_name }}&rdquo;</strong>. Unfortunately, this print was not able to complete successfully.</p>
 
             <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 16px;font-size:15px;line-height:1.6;">
                 <tr><td style="padding:2px 8px 2px 0;font-weight:700;">Print&nbsp;ID:</td><td>{{ job.label_code }}</td></tr>
@@ -30,7 +30,7 @@
             <p style="margin:0 0 16px;font-size:15px;line-height:1.5;padding:12px;background-color:#f6f6f6;border-radius:6px;">{{ job.completion_notes }}</p>
             {% endif %}
 
-            <p style="margin:0 0 16px;font-size:16px;line-height:1.5;">We know this can be frustrating, and we&rsquo;re happy to help you get your project back on track. Please stop by the makerspace desk and our staff will be glad to assist you with next steps&mdash;whether that&rsquo;s adjusting your file, reprinting, or exploring other options.</p>
+            <p style="margin:0 0 16px;font-size:16px;line-height:1.5;">We know this can be frustrating, and we&rsquo;re happy to help you get your project back on track. Please stop by the {{ location }} desk and our staff will be glad to assist you with next steps&mdash;whether that&rsquo;s adjusting your file, reprinting, or exploring other options.</p>
 
             <p style="margin:0 0 16px;font-size:16px;line-height:1.5;">You can find the current hours of the space at <a href="https://lib.ncsu.edu/hours" style="color:#cc0000;">lib.ncsu.edu/hours</a>.</p>
 

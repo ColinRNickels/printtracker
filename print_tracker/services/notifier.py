@@ -33,8 +33,9 @@ def send_completion_email(job) -> tuple[str, str | None]:
     logo_cid_header = make_msgid(domain="ncsu.edu")
     logo_cid_bare = logo_cid_header[1:-1]  # strip angle brackets for HTML src
 
-    body_text = render_template(txt_template, job=job)
-    body_html = render_template(html_template, job=job, logo_cid=logo_cid_bare)
+    location = job.location or current_app.config.get("DEFAULT_PRINTER_NAME", "Makerspace")
+    body_text = render_template(txt_template, job=job, location=location)
+    body_html = render_template(html_template, job=job, logo_cid=logo_cid_bare, location=location)
 
     logo_path = os.path.join(
         current_app.static_folder, "ncsu-makerspace-logo-long-v2.png"
