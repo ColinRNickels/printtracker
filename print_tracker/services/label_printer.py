@@ -214,15 +214,6 @@ def _render_label_image(
         draw.line((margin, y, width - margin, y), fill=0, width=1)
         y += max(8, margin // 4)
 
-    for line in _wrap_text(
-        draw, "3D PRINT", font=title_font, max_width=text_max_width
-    ):
-        line_h = _text_height(draw, line, title_font)
-        if y + line_h > text_max_y:
-            break
-        draw.text((margin, y), line, fill=0, font=title_font)
-        y += line_h + max(4, margin // 6)
-
     # Patron name is primary visual information for human pickup sorting.
     sort_name = _format_sort_name(job.user_name)
     for line in _wrap_text(
@@ -265,6 +256,14 @@ def _render_label_image(
             y += line_h + max(6, margin // 4)
         if y >= text_max_y:
             break
+
+    # Large date field below print details
+    date_font = _load_font(max(40, font_base // 10))
+    date_line = date.today().strftime("%b %d, %Y")
+    date_h = _text_height(draw, date_line, date_font)
+    if y + date_h <= text_max_y:
+        draw.text((margin, y), date_line, fill=0, font=date_font)
+        y += date_h + max(6, margin // 4)
 
     id_font_to_use = id_font
     id_w = _text_width(draw, id_line, id_font_to_use)
