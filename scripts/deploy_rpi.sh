@@ -13,7 +13,7 @@ DEPLOY_DIR=""
 PORT="5000"
 PRINT_MODE="cups"
 PRINTER_QUEUE=""
-LABEL_MEDIA="Custom.62x100mm"
+LABEL_MEDIA="62x100mm"
 STAFF_PASSWORD=""
 SITE_ID=""
 LOCATION_NAME="Makerspace"
@@ -541,9 +541,9 @@ if [[ "${UPDATE_MODE}" -eq 1 ]]; then
   _cur_media="$(get_env_value "${ENV_FILE}" "LABEL_CUPS_MEDIA")"
   _cur_queue="$(get_env_value "${ENV_FILE}" "LABEL_PRINTER_QUEUE")"
   _env_migrated=0
-  if [[ "${_cur_media}" == "DK-1202" || "${_cur_media}" == "62x100mm" ]]; then
-    set_env_value "${ENV_FILE}" "LABEL_CUPS_MEDIA" "Custom.62x100mm"
-    tui_success "Migrated LABEL_CUPS_MEDIA: ${_cur_media} → Custom.62x100mm"
+  if [[ "${_cur_media}" == "DK-1202" || "${_cur_media}" == "Custom.62x100mm" ]]; then
+    set_env_value "${ENV_FILE}" "LABEL_CUPS_MEDIA" "62x100mm"
+    tui_success "Migrated LABEL_CUPS_MEDIA: ${_cur_media} → 62x100mm"
     _env_migrated=1
   fi
   if [[ "${_cur_queue}" == "QL800" || "${_cur_queue}" == "QL-800" ]]; then
@@ -627,7 +627,7 @@ if [[ -f "${ENV_FILE}" ]]; then
   _maybe PORT                "PORT"                          "5000"
   _maybe PRINT_MODE          "LABEL_PRINT_MODE"              "cups"
   _maybe PRINTER_QUEUE       "LABEL_PRINTER_QUEUE"           ""
-  _maybe LABEL_MEDIA         "LABEL_CUPS_MEDIA"              "Custom.62x100mm"
+  _maybe LABEL_MEDIA         "LABEL_CUPS_MEDIA"              "62x100mm"
   _maybe LOCATION_NAME       "DEFAULT_PRINTER_NAME"          "Makerspace"
   _maybe SITE_ID             "SITE_ID"                       ""
   _maybe GO_NCSU_API_TOKEN   "GO_NCSU_API_TOKEN"             ""
@@ -784,7 +784,7 @@ LOGO
     printf '\n'
 
     tui_hint "Page size — tells the printer what size labels are loaded."
-    tui_explain "  Custom.62x100mm = standard Brother DK-1202 address labels (62 mm × 100 mm)."
+    tui_explain "  62x100mm = standard Brother DK-1202 address labels (62 mm × 100 mm)."
     tui_explain "  Only change this if you're using a different label stock."
     LABEL_MEDIA="$(prompt_default "CUPS page size" "${LABEL_MEDIA}")"
     printf '\n'
@@ -1338,6 +1338,7 @@ set_env_value "${ENV_FILE}" "LABEL_ORIENTATION" "landscape"
 set_env_value "${ENV_FILE}" "LABEL_QR_PAYLOAD_MODE" "url"
 set_env_value "${ENV_FILE}" "LABEL_QR_SIZE_INCH" "1.0"
 set_env_value "${ENV_FILE}" "LABEL_CUPS_MEDIA" "${LABEL_MEDIA}"
+set_env_value "${ENV_FILE}" "LABEL_CUPS_EXTRA_OPTIONS" "MediaType=Labels"
 set_env_value "${ENV_FILE}" "LABEL_SAVE_LABEL_FILES" "true"
 set_env_value "${ENV_FILE}" "LABEL_BRAND_TEXT" "NC State University Libraries Makerspace"
 [[ -f "${LOGO_DEST}" ]] && set_env_value "${ENV_FILE}" "LABEL_BRAND_LOGO_PATH" "${LOGO_DEST}"
