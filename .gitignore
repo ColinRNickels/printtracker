@@ -7,4 +7,5 @@ instance/*.db-shm
 instance/*.db-wal
 labels/*.png
 *.log
+dist/
 

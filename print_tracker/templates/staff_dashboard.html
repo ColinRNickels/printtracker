@@ -28,6 +28,11 @@
         <button type="submit">Open Job</button>
     </form>
 
+    <p class="muted-line">Need to print a label outside open hours? Use staff-assisted registration:</p>
+    <div class="inline-actions">
+        <a class="button-link" href="{{ url_for('patron.register') }}">Staff Register Print (Outside Hours)</a>
+    </div>
+
     <form method="post" action="{{ url_for('staff.logout') }}" class="inline-action">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="button-link button-danger">Lock Staff Page</button>

@@ -9,6 +9,7 @@ import json
 import logging
 import time
 import urllib.request
+from html import unescape
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
@@ -94,7 +95,7 @@ def check_is_open(
         return True, ""
 
     if target.get("closed") == "1":
-        display = target.get("display", "")
+        display = unescape(target.get("display", ""))
         return False, f"The Makerspace is closed today. {display}".strip()
 
     day_start = target.get("day_start")
@@ -107,11 +108,11 @@ def check_is_open(
     buffer_seconds = post_close_buffer_minutes * 60
 
     if now_ts < day_start:
-        display = target.get("display", "")
+        display = unescape(target.get("display", ""))
         return False, f"The Makerspace is not open yet. Hours today: {display}.".strip()
 
     if now_ts > day_end + buffer_seconds:
-        display = target.get("display", "")
+        display = unescape(target.get("display", ""))
         return False, f"The Makerspace is now closed. Hours today: {display}.".strip()
 
     return True, ""

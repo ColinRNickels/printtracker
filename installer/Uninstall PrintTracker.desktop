@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Uninstall PrintTracker
+Comment=Remove PrintTracker and all its data from this Raspberry Pi
+Exec=lxterminal -t "Uninstall PrintTracker" -e "bash -c 'curl -fsSL https://raw.githubusercontent.com/ColinRNickels/printtracker/main/scripts/deploy_rpi.sh | sudo bash -s -- --delete; echo; echo Done -- close this window when ready.; read _'"
+Icon=edit-delete
+Terminal=false
+Categories=System;
+StartupNotify=false

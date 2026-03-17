@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Update PrintTracker
+Comment=Pull the latest code and restart PrintTracker
+Exec=lxterminal -t "Update PrintTracker" -e "bash -c 'curl -fsSL https://raw.githubusercontent.com/ColinRNickels/printtracker/main/scripts/deploy_rpi.sh | sudo bash -s -- --update; echo; echo Done -- close this window when ready.; read _'"
+Icon=system-software-update
+Terminal=false
+Categories=System;
+StartupNotify=false

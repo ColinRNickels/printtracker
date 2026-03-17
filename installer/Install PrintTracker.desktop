@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Install PrintTracker
+Comment=Download and install PrintTracker on this Raspberry Pi
+Exec=lxterminal -t "Install PrintTracker" -e "bash -c 'curl -fsSL https://raw.githubusercontent.com/ColinRNickels/printtracker/main/scripts/deploy_rpi.sh | sudo bash; echo; echo Done -- close this window when ready.; read _'"
+Icon=system-software-install
+Terminal=false
+Categories=System;
+StartupNotify=false

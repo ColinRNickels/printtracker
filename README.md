@@ -3,6 +3,17 @@
 Print Tracker is a Flask app for managing 3D-print jobs across NC State
 University Libraries makerspaces (Makerspace and Maker Studio).
 
+## Team Overview (Paste Into Google Doc)
+
+Print Tracker replaces paper-based 3D print sign-up and completion tracking
+with a phone-first workflow. Patrons register prints from their phones,
+staff complete jobs by scanning a QR code on printed labels, and the system
+handles notification emails plus optional Google Sheets sync. The app runs on
+a Raspberry Pi with a Brother label printer and can publish a stable public
+URL through a Cloudflare named tunnel. Day-to-day operations are designed for
+non-developers: install/update via guided installer, simple staff dashboard,
+and monthly reporting exports.
+
 ## Goals
 
 1. **Replace paper-based print tracking** — eliminate hand-written sign-up
@@ -159,25 +170,39 @@ PORT=5050 python run.py
 
 ## 3) Raspberry Pi Deploy (Fresh Image)
 
-### 3.1 One-time setup
+### 3.1 Recommended install path (no manual setup)
 
 Use Raspberry Pi OS (Desktop or Lite, Bookworm or later). Plug the Pi
 into wired Ethernet and connect the Brother QL-800 printer via USB.
 
-**One command does everything:**
+You can install either by double-clicking a release launcher file or by
+running one install command. In both paths, the installer does the rest.
+
+Option A (recommended for non-technical users):
+1. Download the latest release zip.
+2. Extract it.
+3. Double-click `Install PrintTracker.desktop`.
+
+Option B (terminal command):
 
 ```bash
-sudo apt update && sudo apt install -y git
-git clone https://github.com/ColinRNickels/printtracker.git ~/PrintTracker
-cd ~/PrintTracker
-sudo ./scripts/deploy_rpi.sh
+curl -fsSL https://raw.githubusercontent.com/ColinRNickels/printtracker/main/scripts/deploy_rpi.sh | sudo bash
 ```
 
 The interactive wizard walks you through every setting (staff password,
 printer, tunnel, Google integration, etc.). When it finishes the app is
 live and printing.
 
-### 3.2 What the deploy script does
+Minimum requirements for either path:
+- Internet connection
+- Admin privileges (`sudo`)
+- Raspberry Pi OS Bookworm or later
+- `curl` (or `wget`) available to download the installer script
+
+No separate git clone, Python setup, apt package list, or manual service
+configuration is required before starting the installer.
+
+### 3.2 What the installer handles automatically
 
 `scripts/deploy_rpi.sh` automates:
 
@@ -196,7 +221,7 @@ live and printing.
 - Optional go.ncsu.edu short link
 - Optional Google OAuth setup (Gmail notifications + Sheets sync)
 
-### 3.3 Brother QL-800 setup (CUPS)
+### 3.3 Brother QL-800 setup (only if auto-detect fails)
 
 The deploy script auto-creates the CUPS printer queue if it detects a
 Brother USB device. If the printer is not plugged in during deploy, or
@@ -216,7 +241,7 @@ lpstat -p -d
 lp -d QL-800 /usr/share/cups/data/testprint
 ```
 
-### 3.4 Deploy script examples
+### 3.4 Advanced examples (optional)
 
 ```bash
 # Accept all defaults (interactive wizard)
@@ -240,6 +265,20 @@ sudo ./scripts/deploy_rpi.sh \
   --google-gmail-sender makerspace@ncsu.edu \
   --google-spreadsheet-id <SHEET_ID>
 ```
+
+### 3.5 Build the release zip (maintainers)
+
+From the project root:
+
+```bash
+bash scripts/package-release.sh v1.2.0
+```
+
+This creates:
+- `dist/PrintTracker-v1.2.0-pi.zip`
+- `dist/PrintTracker-v1.2.0-pi.zip.sha256`
+
+Upload the zip to GitHub Releases or Google Drive for end users.
 
 ---
 
@@ -265,13 +304,15 @@ cloudflared tunnel --url http://localhost:5000
 It prints something like `https://random-words-here.trycloudflare.com`.
 The URL changes on every restart — fine for testing, not for production.
 
-### 4.2 Prerequisites (one-time, on your laptop)
+### 4.2 External prerequisites (account-level, not automated)
+
+These are only needed if you want a permanent public URL. They are not
+required for local-only operation.
 
 1. **Cloudflare account** — https://dash.cloudflare.com/sign-up
 2. **Domain added to Cloudflare** — `howcanthis.be` with Cloudflare
    nameservers set at the registrar
-3. **cloudflared installed** — `brew install cloudflared` (macOS) or
-   download the `.deb` for the Pi
+3. **cloudflared CLI on the machine creating the tunnel** (laptop or Pi)
 4. **Authenticate** — `cloudflared tunnel login` (opens browser, saves
    `~/.cloudflared/cert.pem`)
 
@@ -309,6 +350,9 @@ sudo ./scripts/deploy_rpi.sh \
 Or let the interactive wizard prompt for these values in Step 5 — it
 auto-detects credential files on the transfer drive.
 
+If you start from `Install PrintTracker.desktop`, this step still happens
+inside the same guided installer flow.
+
 The deploy script:
 1. Copies the creds file to `/etc/cloudflared/tunnel-creds.json`
 2. Extracts the tunnel ID from the JSON
@@ -337,6 +381,9 @@ To restrict access to NCSU networks:
 Google OAuth is used for both sending email (Gmail API) and syncing data
 (Google Sheets API). The OAuth flow generates a refresh token that is
 stored in `.env` and used for all API calls.
+
+If you choose Google setup during `deploy_rpi.sh`, the installer will guide
+you through this. The steps below are for manual or recovery setup.
 
 ### 5.1 Create Google Cloud credentials
 

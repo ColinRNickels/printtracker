@@ -8,8 +8,17 @@
             Month
             <input type="month" name="month" value="{{ month_value }}" required>
         </label>
+        <label>
+            Location
+            <select name="location">
+                <option value="" {% if not selected_location %}selected{% endif %}>All locations</option>
+                {% for location in available_locations %}
+                    <option value="{{ location }}" {% if location == selected_location %}selected{% endif %}>{{ location }}</option>
+                {% endfor %}
+            </select>
+        </label>
         <button type="submit">Load</button>
-        <a class="button-link" href="{{ url_for('reports.monthly_csv', month=month_value) }}">Download CSV</a>
+        <a class="button-link" href="{{ url_for('reports.monthly_csv', month=month_value, location=selected_location) }}">Download CSV</a>
     </form>
 </section>
 

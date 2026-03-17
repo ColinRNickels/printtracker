@@ -271,6 +271,71 @@ prompt_yes_no() {
   done
 }
 
+pause_for_enter() {
+  [[ "${NON_INTERACTIVE}" -eq 1 ]] && return 0
+  printf '\n  %b%s%b' "${C_BOLD}" "Press Enter to continue" "${C_RESET}" >/dev/tty
+  read -r _ </dev/tty
+}
+
+show_cloudflare_credential_walkthrough() {
+  tui_rule '·'
+  tui_explain "  Guided checklist: gather Cloudflare tunnel credentials"
+  printf '\n'
+  tui_hint "Goal: return with TWO things"
+  tui_explain "  1) Credentials JSON file path"
+  tui_explain "  2) Hostname routed to this tunnel"
+  printf '\n'
+  tui_hint "On a laptop (or this Pi) run these commands:"
+  tui_explain "    cloudflared tunnel login"
+  tui_explain "    cloudflared tunnel create <tunnel-name>"
+  tui_explain "    cloudflared tunnel route dns <tunnel-name> <hostname>"
+  printf '\n'
+  tui_hint "Find the credentials file"
+  tui_explain "  Usually: ~/.cloudflared/<TUNNEL_ID>.json"
+  tui_explain "  Copy it to this Pi or a USB transfer drive."
+  printf '\n'
+  tui_hint "Need docs?"
+  tui_explain "  https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/create-remote-tunnel/"
+  pause_for_enter
+}
+
+show_golink_credential_walkthrough() {
+  tui_rule '·'
+  tui_explain "  Guided checklist: gather go.ncsu.edu API credentials"
+  printf '\n'
+  tui_hint "Goal: return with TWO things"
+  tui_explain "  1) Existing short-link slug (after go.ncsu.edu/)"
+  tui_explain "  2) API token"
+  printf '\n'
+  tui_hint "Create/copy your token"
+  tui_explain "  1) Open https://go.ncsu.edu/api/help"
+  tui_explain "  2) Create a token (name it print-tracker)"
+  tui_explain "  3) Copy token now (shown once)"
+  printf '\n'
+  tui_hint "Make sure the short link already exists"
+  tui_explain "  Example: go.ncsu.edu/makerspace-print-label"
+  pause_for_enter
+}
+
+show_google_credential_walkthrough() {
+  tui_rule '·'
+  tui_explain "  Guided checklist: gather Google OAuth credentials"
+  printf '\n'
+  tui_hint "Goal: return with THREE things"
+  tui_explain "  1) OAuth client JSON file (Desktop app client)"
+  tui_explain "  2) Gmail sender address"
+  tui_explain "  3) Optional Google Sheet URL or ID"
+  printf '\n'
+  tui_hint "Google Cloud setup"
+  tui_explain "  1) Open https://console.cloud.google.com/apis/credentials"
+  tui_explain "  2) Enable Gmail API and Google Sheets API"
+  tui_explain "  3) Create OAuth Client ID -> Desktop app"
+  tui_explain "  4) Download client_secret_*.json"
+  printf '\n'
+  tui_hint "If needed, share the target Google Sheet with the OAuth account."
+  pause_for_enter
+}
+
 prompt_password() {
   local pw="" pw2=""
   while true; do
@@ -863,6 +928,12 @@ LOGO
   printf '\n'
   tui_hint "You can set this up later by re-running the deploy script."
 
+  if [[ "${NON_INTERACTIVE}" -eq 0 ]]; then
+    if prompt_yes_no "Need a guided Cloudflare credential checklist first" "n"; then
+      show_cloudflare_credential_walkthrough
+    fi
+  fi
+
   if [[ "${SETUP_TUNNEL}" -lt 0 ]]; then
     if prompt_yes_no "Set up a Cloudflare named tunnel" "y"; then
       SETUP_TUNNEL=1
@@ -974,6 +1045,12 @@ LOGO
   printf '\n'
   tui_hint "If you don't have a short link or token yet, say NO."
 
+  if [[ "${NON_INTERACTIVE}" -eq 0 ]]; then
+    if prompt_yes_no "Need a guided go.ncsu.edu credential checklist first" "n"; then
+      show_golink_credential_walkthrough
+    fi
+  fi
+
   if [[ "${SETUP_GOLINK}" -lt 0 ]]; then
     if prompt_yes_no "Update a go.ncsu.edu short link" "y"; then
       SETUP_GOLINK=1
@@ -1039,6 +1116,12 @@ LOGO
   printf '\n'
   tui_hint "If you have that file, say YES."
   tui_hint "If you don't have it yet, say NO — you can configure this later."
+
+  if [[ "${NON_INTERACTIVE}" -eq 0 ]]; then
+    if prompt_yes_no "Need a guided Google credential checklist first" "n"; then
+      show_google_credential_walkthrough
+    fi
+  fi
 
   if [[ "${SETUP_GOOGLE_OAUTH}" -lt 0 ]]; then
     if prompt_yes_no "Configure Google integration now" "y"; then

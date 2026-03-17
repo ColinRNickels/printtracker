@@ -246,18 +246,22 @@ def _render_label_image(
     brand_logo = _load_brand_logo(brand_logo_path)
 
     if side_art:
-        watermark_opacity = 0.34
+        watermark_opacity = 0.3
         watermark_top = margin + max(_mm_to_px(9, dpi), height // 7)
-        watermark_bottom = max(watermark_top + 1, text_max_y)
+        # Maximize watermark height from its anchored top down to just above
+        # the physical bottom margin of the label.
+        watermark_bottom = max(watermark_top + 1, height - margin)
         max_side_w = max(1, text_max_width)
-        max_side_h = max(1, watermark_bottom - watermark_top)
+        # Keep the watermark top fixed and let it render as large as possible.
+        half_inch_shift = _inch_to_px(0.75, dpi)
+        side_y = watermark_top + half_inch_shift
+        max_side_h = max(1, watermark_bottom - side_y)
 
         side_art = side_art.copy()
         side_art.thumbnail((max_side_w, max_side_h), Image.Resampling.LANCZOS)
 
-        side_x = margin + (text_max_width - side_art.width) // 2
-        # Bias the watermark downward so the top header remains crisp.
-        side_y = watermark_bottom - side_art.height
+        # Center on the entire label width.
+        side_x = (width - side_art.width) // 2
 
         alpha_mask = side_art.point(
             lambda p: int((255 - p) * watermark_opacity), mode="L"
