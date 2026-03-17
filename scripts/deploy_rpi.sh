@@ -25,6 +25,9 @@ SKIP_APT=0
 SKIP_SERVICE=0
 SKIP_CUPS=0
 SKIP_DB_INIT=0
+STAFF_PASSWORD_FROM_CLI=0
+LABEL_MEDIA_FROM_CLI=0
+PRINTER_QUEUE_FROM_CLI=0
 SETUP_GOOGLE_OAUTH=-1
 GOOGLE_CLIENT_SECRETS=""
 GOOGLE_GMAIL_SENDER="library_makerspace@ncsu.edu"
@@ -152,7 +155,8 @@ Run from the project root after cloning the repository.
 
 Options:
   --update                 Quick update: pull code, reinstall deps, restart services.
-                           Skips the wizard; reads all config from the existing .env.
+                           Skips the wizard; reads existing .env, but supports
+                           --staff-password, --printer-queue, and --media overrides.
   --delete                 Remove Print Tracker: stop services, delete repo,
                            remove systemd units and .env. Prompts for confirmation.
   --non-interactive        Use defaults and skip prompts.
@@ -441,9 +445,9 @@ while [[ $# -gt 0 ]]; do
     --port)                  PORT="$2";                       shift 2 ;;
     --print-mode)            PRINT_MODE="$2";                 shift 2 ;;
     --repo-dir)              DEPLOY_DIR="$2";                 shift 2 ;;
-    --printer-queue)         PRINTER_QUEUE="$2";              shift 2 ;;
-    --media)                 LABEL_MEDIA="$2";                shift 2 ;;
-    --staff-password)        STAFF_PASSWORD="$2";             shift 2 ;;
+    --printer-queue)         PRINTER_QUEUE="$2"; PRINTER_QUEUE_FROM_CLI=1; shift 2 ;;
+    --media)                 LABEL_MEDIA="$2"; LABEL_MEDIA_FROM_CLI=1; shift 2 ;;
+    --staff-password)        STAFF_PASSWORD="$2"; STAFF_PASSWORD_FROM_CLI=1; shift 2 ;;
     --setup-google-oauth)    SETUP_GOOGLE_OAUTH=1;            shift ;;
     --no-google-oauth)       SETUP_GOOGLE_OAUTH=0;            shift ;;
     --google-client-secrets) GOOGLE_CLIENT_SECRETS="$2";      shift 2 ;;
@@ -629,6 +633,20 @@ if [[ "${UPDATE_MODE}" -eq 1 ]]; then
     tui_success ".env settings are current."
   fi
 
+  # 2b. Apply explicit CLI overrides in --update mode
+  if [[ "${STAFF_PASSWORD_FROM_CLI}" -eq 1 ]]; then
+    set_env_value "${ENV_FILE}" "STAFF_PASSWORD" "${STAFF_PASSWORD}"
+    tui_success "Updated STAFF_PASSWORD from --staff-password flag."
+  fi
+  if [[ "${PRINTER_QUEUE_FROM_CLI}" -eq 1 && -n "${PRINTER_QUEUE}" ]]; then
+    set_env_value "${ENV_FILE}" "LABEL_PRINTER_QUEUE" "${PRINTER_QUEUE}"
+    tui_success "Updated LABEL_PRINTER_QUEUE from --printer-queue flag."
+  fi
+  if [[ "${LABEL_MEDIA_FROM_CLI}" -eq 1 && -n "${LABEL_MEDIA}" ]]; then
+    set_env_value "${ENV_FILE}" "LABEL_CUPS_MEDIA" "${LABEL_MEDIA}"
+    tui_success "Updated LABEL_CUPS_MEDIA from --media flag."
+  fi
+
   # 3. Reinstall Python deps
   tui_progress "Installing Python dependencies"
   if [[ ! -x "${VENV_DIR}/bin/python" ]]; then
@@ -656,6 +674,19 @@ if [[ "${UPDATE_MODE}" -eq 1 ]]; then
     tui_progress "Restarting cloudflared"
     run_root systemctl restart cloudflared
     tui_success "cloudflared restarted."
+  fi
+
+  # 6. If CUPS is in use, enforce die-cut defaults on the active queue.
+  _upd_print_mode="$(get_env_value "${ENV_FILE}" "LABEL_PRINT_MODE")"
+  _upd_queue="$(get_env_value "${ENV_FILE}" "LABEL_PRINTER_QUEUE")"
+  _upd_media="$(get_env_value "${ENV_FILE}" "LABEL_CUPS_MEDIA")"
+  if [[ "${_upd_print_mode}" == "cups" && -n "${_upd_queue}" ]] && command -v lpstat >/dev/null 2>&1; then
+    if lpstat -a "${_upd_queue}" >/dev/null 2>&1; then
+      _upd_media="${_upd_media:-62x100mm}"
+      tui_progress "Applying die-cut defaults to CUPS queue ${_upd_queue}"
+      run_root lpadmin -p "${_upd_queue}" -o "PageSize=${_upd_media}" -o "MediaType=Labels" 2>/dev/null || true
+      tui_success "CUPS defaults set: PageSize=${_upd_media}, MediaType=Labels"
+    fi
   fi
 
   printf '\n'
@@ -1589,6 +1620,13 @@ if [[ "${SKIP_CUPS}" -eq 0 ]]; then
       fi
     fi
     tui_success "CUPS queue '${PRINTER_QUEUE}' already exists."
+  fi
+
+  # Ensure queue defaults match die-cut label stock (e.g. DK-1202).
+  if [[ "${PRINT_MODE}" == "cups" ]] && lpstat -a "${PRINTER_QUEUE}" >/dev/null 2>&1; then
+    tui_progress "Setting CUPS defaults for die-cut labels on '${PRINTER_QUEUE}'"
+    run_root lpadmin -p "${PRINTER_QUEUE}" -o "PageSize=${LABEL_MEDIA}" -o "MediaType=Labels" 2>/dev/null || true
+    tui_success "CUPS defaults set: PageSize=${LABEL_MEDIA}, MediaType=Labels"
   fi
 else
   tui_warn "Skipping CUPS setup (--skip-cups)."
